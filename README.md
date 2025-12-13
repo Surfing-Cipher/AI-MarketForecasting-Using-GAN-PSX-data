@@ -1,6 +1,6 @@
 # AI Market Forecasting (PSX) - FYP 1
 
-![Project Output](image/fyp1output.png)
+![Project Output](/images/fyp1output.png)
 
 ## Overview
 This project is an **AI-powered Stock Market Forecasting Dashboard** specifically tailored for the Pakistan Stock Exchange (PSX), focusing on Oil & Gas Development Company (OGDC). It leverages a hybrid approach combining **Topological Data Analysis (TDA), GANs, LSTM, and XGBoost** to predict stock trends.
