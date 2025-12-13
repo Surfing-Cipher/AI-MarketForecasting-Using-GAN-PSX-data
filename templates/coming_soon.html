@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coming Soon | NEXUS AI</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Header:wght@400;600;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        neon: {
+                            cyan: '#06b6d4',
+                            green: '#10b981',
+                            red: '#f43f5e',
+                            purple: '#8b5cf6'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Glassmorphism & Custom Scrollbar */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        body {
+            background-color: #020617;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans h-screen w-screen flex overflow-hidden">
+
+    <!-- Left Sidebar -->
+    <aside class="w-[80px] lg:w-[240px] bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 z-50 glass-panel">
+        <div>
+            <!-- Branding -->
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800/50">
+                <i class="ri-radar-fill text-2xl text-neon-cyan animate-pulse-slow"></i>
+                <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span class="text-neon-cyan">AI</span></span>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
+                <a href="/" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-dashboard-3-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Dashboard</span>
+                </a>
+                <a href="#" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                    <i class="ri-hammer-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Other Modules</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- User Profile (Bottom) -->
+        <div class="p-4 border-t border-slate-800/50">
+            <div class="flex items-center justify-center lg:justify-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">A</div>
+                <div class="hidden lg:block">
+                    <p class="text-sm font-semibold text-white">Admin</p>
+                    <p class="text-xs text-slate-500">Pro Access</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Section -->
+    <main class="flex-1 flex flex-col h-full relative items-center justify-center">
+        
+        <!-- Top Header -->
+        <header class="absolute top-0 left-0 w-full h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur flex items-center justify-between px-8 z-40">
+            <div class="flex items-center gap-4">
+                <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Market Forecasting</h2>
+                <span class="px-2 py-1 rounded bg-slate-800 text-slate-400 text-xs font-mono">OGDC / PSX</span>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                 <!-- Status Indicator -->
+                 <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
+                    <div class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
+                    <span class="text-xs font-mono text-neon-green tracking-wide">SYSTEM OPERATIONAL</span>
+                </div>
+                <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- Coming Soon Hero -->
+        <div class="glass-panel p-12 rounded-3xl border border-neon-purple/20 shadow-[0_0_30px_-5px_rgba(139,92,246,0.15)] text-center max-w-lg mx-6 relative overflow-hidden">
+            <!-- Background Decoration -->
+            <div class="absolute -right-20 -top-20 w-40 h-40 bg-neon-purple/20 blur-3xl rounded-full"></div>
+            <div class="absolute -left-20 -bottom-20 w-40 h-40 bg-neon-cyan/20 blur-3xl rounded-full"></div>
+            
+            <div class="relative z-10">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-900 border border-slate-700 mb-6 shadow-xl">
+                     <i class="ri-code-box-line text-4xl text-neon-purple animate-pulse-slow"></i>
+                </div>
+                
+                <h1 class="text-3xl font-bold text-white mb-3">Module Under Development</h1>
+                <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                    This feature is scheduled for the <span class="text-neon-cyan font-mono">FYP-2</span> release cycle. 
+                    Our team is currently working on the backend integration.
+                </p>
+
+                <a href="/" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-slate-950 font-bold hover:bg-slate-200 transition-colors">
+                    <i class="ri-arrow-left-line"></i>
+                    Return to Dashboard
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString();
+        }, 1000);
+    </script>
+</body>
+</html>
