@@ -137,11 +137,18 @@
             
             <div class="flex items-center gap-6">
                 <!-- Status Indicator -->
-                <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
-                    <div class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
-                    <span class="text-xs font-mono text-neon-green tracking-wide">SYSTEM OPERATIONAL</span>
+                <div id="status-container" class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
+                    <span id="status-text" class="text-xs font-mono text-neon-green tracking-wide">SYSTEM OPERATIONAL</span>
                 </div>
                 <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
+
+                <!-- Dummy Login Button (Visual Trick) -->
+                <button onclick="alert('User Management Module is scheduled for FYP-2 implementation.')" 
+                        class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-neon-purple/30 transition-all flex items-center gap-2 text-sm font-medium shadow-lg shadow-neon-purple/10">
+                    <i class="ri-user-3-line"></i> 
+                    <span class="hidden md:inline">Login / Register</span>
+                </button>
             </div>
         </header>
 
@@ -302,6 +309,23 @@
 
             } catch (err) {
                 console.error("Fetch failed", err);
+                // Fallback Scenario: System Offline Visuals
+                document.getElementById('price').innerHTML = `<span class="text-neon-red text-xl">Offline</span>`;
+                
+                // Update Status Indicator
+                const container = document.getElementById('status-container');
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+
+                container.classList.remove('border-neon-green/20', 'bg-neon-green/10');
+                container.classList.add('border-neon-red/20', 'bg-neon-red/10');
+
+                dot.classList.remove('bg-neon-green');
+                dot.classList.add('bg-neon-red');
+
+                text.innerText = "SYSTEM OFFLINE";
+                text.classList.remove('text-neon-green');
+                text.classList.add('text-neon-red');
             }
         }
 
