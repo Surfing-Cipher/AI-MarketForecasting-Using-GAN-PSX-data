@@ -1,10 +1,97 @@
+# ===================================
+# Python
+# ===================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.env
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyc
+.Python
+.vscode
+
+# ===================================
+# Virtual Environment
+# ===================================
 venv/
+vanas/
+env/
+ENV/
+*.venv
+
+# ===================================
+# IDEs and Editors
+# ===================================
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 .DS_Store
+
+# ===================================
+# Environment Variables
+# ===================================
+.env
+.env.local
+.env.*.local
+
+# ===================================
+# Data Files (Don't push to GitHub)
+# ===================================
+data/raw/*.csv
+data/database/*.db
+data/database/*.sqlite
+data/database/*.sqlite3
+
+# ===================================
+# Model Files (Too Large for GitHub)
+# ===================================
+models/saved_models/*.h5
+models/saved_models/*.json
+models/saved_models/*.pb
+models/saved_models/*.pth
+models/saved_models/*.pt
+models/scalers/*.pkl
+models/scalers/*.joblib
+
+# ===================================
+# Results and Outputs
+# ===================================
+results/*.json
+results/*.csv
+results/*.txt
 *.log
+logs/
+
+# ===================================
+# Jupyter Notebooks Checkpoints
+# ===================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ===================================
+# Operating System
+# ===================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===================================
+# Testing
+# ===================================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# ===================================
+# Temporary Files
+# ===================================
+*.tmp
+*.temp
+*.bak
+*.swp

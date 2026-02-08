@@ -82,9 +82,20 @@ class PSXDataPipeline:
                         # PSX Format: TIME, OPEN, HIGH, LOW, CLOSE, VOLUME
                         try:
                             dt = datetime.strptime(cols[0], "%b %d, %Y")
+                            open_val = float(cols[1].replace(',', ''))
+                            high_val = float(cols[2].replace(',', ''))
+                            low_val = float(cols[3].replace(',', ''))
                             close = float(cols[4].replace(',', ''))
                             vol = int(cols[5].replace(',', ''))
-                            all_data.append({"Date": dt, "Close": close, "Volume": vol})
+                            
+                            all_data.append({
+                                "Date": dt, 
+                                "Open": open_val,
+                                "High": high_val,
+                                "Low": low_val,
+                                "Close": close, 
+                                "Volume": vol
+                            })
                         except ValueError:
                             continue
             except Exception:

@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PSX Market Forecasting | AI Terminal</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Header:wght@400;600;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Header:wght@400;600;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;800&display=swap"
+        rel="stylesheet">
 
     <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -56,10 +59,10 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        
+
         body {
             background-color: #020617;
-            background-image: 
+            background-image:
                 radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
                 radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
         }
@@ -69,44 +72,173 @@
             width: 6px;
             height: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: transparent;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #334155;
             border-radius: 3px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #475569;
         }
+
+        /* Modal Styles */
+        .chart-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+            margin: 5% auto;
+            padding: 0;
+            border: 2px solid #6366f1;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 900px;
+            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.3);
+            animation: slideDown 0.4s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #a5b4fc;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            color: #9ca3af;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #f87171;
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .accuracy-badge {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .accuracy-badge #accuracyLabel {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-right: 10px;
+        }
+
+        .accuracy-badge #accuracyValue {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #performanceChart {
+            max-height: 400px;
+        }
+
+        .prediction-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .prediction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
     </style>
 </head>
+
 <body class="bg-slate-950 text-slate-200 font-sans h-screen w-screen flex overflow-hidden">
 
     <!-- Left Sidebar -->
-    <aside class="w-[80px] lg:w-[240px] bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 z-50 glass-panel">
+    <aside
+        class="w-[80px] lg:w-[240px] bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 z-50 glass-panel">
         <div>
             <!-- Branding -->
             <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800/50">
                 <i class="ri-radar-fill text-2xl text-neon-cyan animate-pulse-slow"></i>
-                <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span class="text-neon-cyan">AI</span></span>
+                <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span
+                        class="text-neon-cyan">AI</span></span>
             </div>
 
             <!-- Navigation -->
             <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
-                <a href="/" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                <a href="/"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
                     <i class="ri-dashboard-3-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Dashboard</span>
                 </a>
-                <a href="/portfolio" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                <a href="/portfolio"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-line-chart-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Portfolio</span>
                 </a>
-                <a href="/gan-model" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                <a href="/gan-model"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-brain-line text-xl"></i>
                     <span class="hidden lg:block font-medium">GAN Model</span>
                 </a>
-                <a href="/settings" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                <a href="/settings"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-settings-4-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Settings</span>
                 </a>
@@ -116,7 +248,9 @@
         <!-- User Profile (Bottom) -->
         <div class="p-4 border-t border-slate-800/50">
             <div class="flex items-center justify-center lg:justify-start gap-3">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">A</div>
+                <div
+                    class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">
+                    A</div>
                 <div class="hidden lg:block">
                     <p class="text-sm font-semibold text-white">Admin</p>
                     <p class="text-xs text-slate-500">Pro Access</p>
@@ -127,26 +261,30 @@
 
     <!-- Main Section -->
     <main class="flex-1 flex flex-col h-full relative">
-        
+
         <!-- Top Header -->
-        <header class="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur flex items-center justify-between px-8 z-40">
+        <header
+            class="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur flex items-center justify-between px-8 z-40">
             <div class="flex items-center gap-4">
-                <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Market Forecasting</h2>
+                <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    Market Forecasting</h2>
                 <span class="px-2 py-1 rounded bg-slate-800 text-slate-400 text-xs font-mono">OGDC / PSX</span>
             </div>
-            
+
             <div class="flex items-center gap-6">
                 <!-- Status Indicator -->
-                <div id="status-container" class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
+                <div id="status-container"
+                    class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
                     <div id="status-dot" class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
-                    <span id="status-text" class="text-xs font-mono text-neon-green tracking-wide">SYSTEM OPERATIONAL</span>
+                    <span id="status-text" class="text-xs font-mono text-neon-green tracking-wide">SYSTEM
+                        OPERATIONAL</span>
                 </div>
                 <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
 
                 <!-- Dummy Login Button (Visual Trick) -->
-                <button onclick="alert('User Management Module is scheduled for FYP-2 implementation.')" 
-                        class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-neon-purple/30 transition-all flex items-center gap-2 text-sm font-medium shadow-lg shadow-neon-purple/10">
-                    <i class="ri-user-3-line"></i> 
+                <button onclick="alert('User Management Module is scheduled for FYP-2 implementation.')"
+                    class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-neon-purple/30 transition-all flex items-center gap-2 text-sm font-medium shadow-lg shadow-neon-purple/10">
+                    <i class="ri-user-3-line"></i>
                     <span class="hidden md:inline">Login / Register</span>
                 </button>
             </div>
@@ -154,7 +292,7 @@
 
         <!-- Dashboard Grid -->
         <div class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
-            
+
             <!-- Hero / Key Metrics Row -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- Price Card -->
@@ -198,7 +336,8 @@
                 </div>
 
                 <!-- Ensemble Forecast -->
-                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden border-neon-cyan/30 shadow-[0_0_15px_-3px_rgba(6,182,212,0.15)]">
+                <div onclick="showModelChart('ensemble')"
+                    class="glass-panel p-6 rounded-2xl relative overflow-hidden border-neon-cyan/30 shadow-[0_0_15px_-3px_rgba(6,182,212,0.15)] cursor-pointer hover:border-purple-500/50 transition-all">
                     <div class="absolute -right-6 -top-6 w-20 h-20 bg-neon-cyan/20 blur-3xl rounded-full"></div>
                     <h3 class="text-neon-cyan text-sm font-bold uppercase tracking-wider flex items-center gap-2">
                         <i class="ri-magic-line"></i> Ensemble Forecast
@@ -207,6 +346,7 @@
                         <span class="text-4xl font-bold text-white font-mono" id="pred-ensemble">-</span>
                     </div>
                     <p class="mt-1 text-xs text-slate-400">Combined Model Confidence</p>
+                    <p class="mt-2 text-xs text-purple-400 font-mono" id="accuracy-ensemble">Accuracy: ~--</p>
                 </div>
             </div>
 
@@ -218,8 +358,10 @@
                         Market Projections
                     </h3>
                     <div class="flex gap-2">
-                        <span class="w-3 h-3 rounded-full bg-neon-cyan"></span> <span class="text-xs text-slate-400">Close</span>
-                        <span class="w-3 h-3 rounded-full bg-neon-red opacity-50 ml-2"></span> <span class="text-xs text-slate-400">Bollinger</span>
+                        <span class="w-3 h-3 rounded-full bg-neon-cyan"></span> <span
+                            class="text-xs text-slate-400">Close</span>
+                        <span class="w-3 h-3 rounded-full bg-neon-red opacity-50 ml-2"></span> <span
+                            class="text-xs text-slate-400">Bollinger</span>
                     </div>
                 </div>
                 <div class="flex-1 relative w-full h-full min-h-[400px]">
@@ -230,13 +372,14 @@
             <!-- Model Details Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
                 <!-- LSTM -->
-                <div class="glass-panel p-6 rounded-2xl">
+                <div class="glass-panel p-6 rounded-2xl prediction-card" onclick="showModelChart('lstm')">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <h4 class="font-bold text-white">LSTM Model</h4>
                             <p class="text-xs text-slate-500">Long Short-Term Memory Network</p>
                         </div>
-                        <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 font-mono">DEEP LEARNING</span>
+                        <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 font-mono">DEEP
+                            LEARNING</span>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -245,13 +388,13 @@
                         </div>
                         <div>
                             <p class="text-xs text-slate-400 uppercase">Accuracy</p>
-                            <p class="text-xl font-mono font-bold text-white mt-1">~87%</p>
+                            <p class="text-xl font-mono font-bold text-white mt-1" id="accuracy-lstm">~87%</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- XGBoost -->
-                <div class="glass-panel p-6 rounded-2xl">
+                <div class="glass-panel p-6 rounded-2xl prediction-card" onclick="showModelChart('xgboost')">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <h4 class="font-bold text-white">XGBoost Model</h4>
@@ -259,14 +402,14 @@
                         </div>
                         <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 font-mono">REGRESSION</span>
                     </div>
-                     <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
                             <p class="text-xs text-slate-400 uppercase">Prediction</p>
                             <p class="text-xl font-mono font-bold text-neon-green mt-1" id="pred-xgb">-</p>
                         </div>
                         <div>
                             <p class="text-xs text-slate-400 uppercase">Accuracy</p>
-                            <p class="text-xl font-mono font-bold text-white mt-1">~91%</p>
+                            <p class="text-xl font-mono font-bold text-white mt-1" id="accuracy-xgb">~91%</p>
                         </div>
                     </div>
                 </div>
@@ -295,12 +438,12 @@
                 // Update DOM elements with formatting
                 document.getElementById('price').innerHTML = `Rs. ${data.current_price}`;
                 document.getElementById('rsi').textContent = data.rsi;
-                
+
                 // Sentiment coloring
                 const sentEl = document.getElementById('sentiment');
                 sentEl.textContent = data.sentiment;
                 sentEl.className = `text-3xl font-bold font-mono ${data.sentiment > 0 ? 'text-neon-green' : 'text-neon-red'}`;
-                
+
                 document.getElementById('pred-lstm').textContent = data.predictions.lstm;
                 document.getElementById('pred-xgb').textContent = data.predictions.xgboost;
                 document.getElementById('pred-ensemble').textContent = data.predictions.ensemble;
@@ -311,7 +454,7 @@
                 console.error("Fetch failed", err);
                 // Fallback Scenario: System Offline Visuals
                 document.getElementById('price').innerHTML = `<span class="text-neon-red text-xl">Offline</span>`;
-                
+
                 // Update Status Indicator
                 const container = document.getElementById('status-container');
                 const dot = document.getElementById('status-dot');
@@ -333,7 +476,7 @@
 
         function updateChart(data) {
             const ctx = document.getElementById('mainChart').getContext('2d');
-            
+
             // Modern Dark Theme Chart Config
             Chart.defaults.color = '#94a3b8';
             Chart.defaults.font.family = 'Inter';
@@ -420,7 +563,7 @@
                             grid: {
                                 color: 'rgba(255, 255, 255, 0.05)',
                             },
-                             border: {
+                            border: {
                                 display: false
                             }
                         }
@@ -431,6 +574,150 @@
 
         // Fetch on load
         fetchMetrics();
+
+        // Load accuracy values from backtest results
+        async function loadAccuracyValues() {
+            try {
+                const response = await fetch('/api/backtest');
+                const data = await response.json();
+
+                if (data.lstm && data.lstm.accuracy !== undefined) {
+                    document.getElementById('accuracy-lstm').textContent = `~${data.lstm.accuracy}%`;
+                }
+                if (data.xgboost && data.xgboost.accuracy !== undefined) {
+                    document.getElementById('accuracy-xgb').textContent = `~${data.xgboost.accuracy}%`;
+                }
+                if (data.ensemble && data.ensemble.accuracy !== undefined) {
+                    document.getElementById('accuracy-ensemble').textContent = `Accuracy: ~${data.ensemble.accuracy}%`;
+                }
+            } catch (error) {
+                console.log('Backtest data not yet available');
+            }
+        }
+
+        loadAccuracyValues();
+
+        // Modal Logic - Wait for DOM to be ready
+        let modal, closeBtn, chartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            modal = document.getElementById('chartModal');
+            closeBtn = document.querySelector('.modal-close');
+
+            if (closeBtn) {
+                closeBtn.onclick = () => modal.style.display = 'none';
+            }
+            window.onclick = (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            };
+        });
+
+        async function showModelChart(modelType) {
+            try {
+                const response = await fetch('/api/backtest');
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Backtesting results not found. Please run backtest.py first.');
+                    return;
+                }
+
+                const modelData = data[modelType];
+
+                // Validate modelData exists and has required properties
+                if (!modelData || !modelData.dates || !modelData.actual || !modelData.predictions) {
+                    console.error('Invalid backtest data structure:', data);
+                    alert('Backtesting data structure is invalid. Please re-run backtest.py.');
+                    return;
+                }
+
+                const titles = {
+                    'lstm': 'LSTM Model Performance',
+                    'xgboost': 'XGBoost Model Performance',
+                    'ensemble': 'Ensemble Model Performance (LSTM + XGBoost)'
+                };
+                document.getElementById('modalTitle').textContent = titles[modelType] || 'Model Performance';
+                document.getElementById('accuracyValue').textContent = `${modelData.accuracy}%`;
+
+                renderPerformanceChart(modelData, modelType);
+
+                // Ensure modal exists before showing
+                if (modal) {
+                    modal.style.display = 'block';
+                } else {
+                    console.error('Modal element not found');
+                }
+            } catch (error) {
+                console.error('Error loading backtest data:', error);
+                alert('Backtesting data not available. Please run backtest.py.');
+            }
+        }
+
+        function renderPerformanceChart(modelData, modelType) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: modelData.dates,
+                    datasets: [
+                        {
+                            label: 'Actual Price',
+                            data: modelData.actual,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 0
+                        },
+                        {
+                            label: modelType === 'ensemble' ? 'Ensemble Prediction' : 'Predicted Price',
+                            data: modelData.predictions,
+                            borderColor: modelType === 'ensemble' ? '#a855f7' : '#f87171',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#9ca3af' } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
     </script>
+
+    <!-- Modal Elements injected at bottom -->
+    <div id="chartModal" class="chart-modal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h2 id="modalTitle">Model Performance</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="accuracy-badge">
+                    <span id="accuracyLabel">Accuracy:</span>
+                    <span id="accuracyValue">--%</span>
+                </div>
+                <div style="position: relative; height: 400px; width: 100%;">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>

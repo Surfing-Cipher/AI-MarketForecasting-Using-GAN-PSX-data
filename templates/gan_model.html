@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSX Market Forecasting | GAN Model</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Header:wght@400;600;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;800&display=swap"
+        rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' },
+                        neon: { cyan: '#06b6d4', green: '#10b981', red: '#f43f5e', purple: '#8b5cf6' }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            background-color: #020617;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-200 font-sans h-screen w-screen flex overflow-hidden">
+
+    <aside
+        class="w-[80px] lg:w-[240px] bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 z-50 glass-panel">
+        <div>
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800/50">
+                <i class="ri-radar-fill text-2xl text-neon-purple animate-pulse-slow"></i>
+                <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span
+                        class="text-neon-purple">AI</span></span>
+            </div>
+
+            <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
+                <a href="/"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-dashboard-3-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Dashboard</span>
+                </a>
+
+                <a href="/portfolio"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-line-chart-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Portfolio</span>
+                </a>
+
+                <a href="/gan-model"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_15px_-3px_rgba(139,92,246,0.3)]">
+                    <i class="ri-brain-fill text-xl"></i>
+                    <span class="hidden lg:block font-medium">GAN Model</span>
+                </a>
+
+                <a href="/settings"
+                    class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-settings-4-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="p-4 border-t border-slate-800/50">
+            <div class="flex items-center justify-center lg:justify-start gap-3">
+                <div
+                    class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-purple to-neon-cyan flex items-center justify-center font-bold text-xs text-black">
+                    A</div>
+                <div class="hidden lg:block">
+                    <p class="text-sm font-semibold text-white">Admin</p>
+                    <p class="text-xs text-slate-500">Pro Access</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative">
+
+        <header
+            class="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur flex items-center justify-between px-8 z-40">
+            <div class="flex items-center gap-4">
+                <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    Generative Adversarial Network</h2>
+                <span
+                    class="px-2 py-1 rounded bg-slate-800 text-neon-purple text-xs font-mono border border-neon-purple/20">SIMULATION
+                    MODE</span>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div
+                    class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/20">
+                    <div class="w-2 h-2 rounded-full bg-neon-purple animate-pulse"></div>
+                    <span class="text-xs font-mono text-neon-purple tracking-wide">GAN ENGINE ONLINE</span>
+                </div>
+                <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+
+            <div class="glass-panel p-6 rounded-2xl border-l-4 border-neon-purple flex items-start gap-4">
+                <div class="p-3 bg-neon-purple/10 rounded-lg">
+                    <i class="ri-robot-2-line text-2xl text-neon-purple"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Synthetic Data Augmentation</h3>
+                    <p class="text-slate-400 text-sm mt-1">
+                        This module uses a trained GAN (Generative Adversarial Network) to simulate potential future
+                        market scenarios.
+                        Unlike traditional forecasting, this generates <strong>synthetic 30-day timelines</strong> to
+                        stress-test our trading strategies against volatility.
+                    </p>
+                </div>
+            </div>
+
+            <div
+                class="glass-panel rounded-2xl p-6 min-h-[500px] flex flex-col shadow-[0_0_50px_-10px_rgba(139,92,246,0.1)]">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="ri-bubble-chart-line text-neon-purple"></i>
+                        30-Day Synthetic Projection
+                    </h3>
+                    <button onclick="fetchGanData()"
+                        class="text-xs flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-white transition">
+                        <i class="ri-refresh-line"></i> Regenerate Scenario
+                    </button>
+                </div>
+                <div class="flex-1 relative w-full h-full min-h-[400px]">
+                    <canvas id="ganChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <i class="ri-arrow-right-down-line text-6xl text-neon-red"></i>
+                    </div>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Synthetic Low</h3>
+                    <div class="mt-2">
+                        <span class="text-3xl font-bold text-white font-mono" id="synLow">Loading...</span>
+                    </div>
+                    <p class="text-xs text-neon-red mt-2">Worst Case Scenario</p>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <i class="ri-arrow-right-up-line text-6xl text-neon-green"></i>
+                    </div>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Synthetic High</h3>
+                    <div class="mt-2">
+                        <span class="text-3xl font-bold text-white font-mono" id="synHigh">Loading...</span>
+                    </div>
+                    <p class="text-xs text-neon-green mt-2">Best Case Scenario</p>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden border-neon-purple/30">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <i class="ri-pulse-fill text-6xl text-neon-purple"></i>
+                    </div>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Projected Volatility</h3>
+                    <div class="mt-2">
+                        <span class="text-3xl font-bold text-white font-mono">HIGH</span>
+                    </div>
+                    <p class="text-xs text-neon-purple mt-2">Data Scarcity Solved</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Clock
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        let ganChartInstance = null;
+
+        async function fetchGanData() {
+            try {
+                // Fetch data from the same API (app.py calculates GAN on every request)
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error("API Error:", data.error);
+                    return;
+                }
+
+                // 1. Get the GAN Data from JSON
+                const ganPath = data.gan_projection;
+
+                // 2. Calculate Stats
+                const minPrice = Math.min(...ganPath);
+                const maxPrice = Math.max(...ganPath);
+
+                document.getElementById('synLow').innerText = `Rs. ${minPrice.toFixed(2)}`;
+                document.getElementById('synHigh').innerText = `Rs. ${maxPrice.toFixed(2)}`;
+
+                // 3. Render Chart
+                updateGanChart(ganPath);
+
+            } catch (error) {
+                console.error("Error loading GAN data:", error);
+            }
+        }
+
+        function updateGanChart(dataPoints) {
+            const ctx = document.getElementById('ganChart').getContext('2d');
+
+            // Labels for Day 1 to Day 30
+            const labels = Array.from({ length: 30 }, (_, i) => `Day +${i + 1}`);
+
+            // Destroy previous chart to prevent overlapping
+            if (ganChartInstance) ganChartInstance.destroy();
+
+            // Gradient for Purple Look
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(139, 92, 246, 0.2)'); // Purple
+            gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+            // Chart Config
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = 'Inter';
+
+            ganChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Synthetic Price Path (GAN)',
+                        data: dataPoints,
+                        borderColor: '#8b5cf6', // Neon Purple
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointRadius: 0, // Smooth line
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4 // Curvy line
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#e2e8f0' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#a78bfa',
+                            borderColor: 'rgba(139, 92, 246, 0.2)',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                    }
+                }
+            });
+        }
+
+        // Run on Page Load
+        fetchGanData();
+    </script>
+</body>
+
+</html>
