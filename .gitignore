@@ -40,30 +40,33 @@ ENV/
 .env.*.local
 
 # ===================================
-# Data Files (Don't push to GitHub)
+# Data Files - INCLUDED for complete project
 # ===================================
-data/raw/*.csv
-data/database/*.db
-data/database/*.sqlite
-data/database/*.sqlite3
+# Uncomment below if you want to exclude data files later
+# data/raw/*.csv
+# data/database/*.db
+# data/database/*.sqlite
+# data/database/*.sqlite3
 
 # ===================================
-# Model Files (Too Large for GitHub)
+# Model Files - INCLUDED for complete project
 # ===================================
-models/saved_models/*.h5
-models/saved_models/*.json
-models/saved_models/*.pb
-models/saved_models/*.pth
-models/saved_models/*.pt
-models/scalers/*.pkl
-models/scalers/*.joblib
+# Uncomment below if files are too large for GitHub
+# models/saved_models/*.h5
+# models/saved_models/*.json
+# models/saved_models/*.pb
+# models/saved_models/*.pth
+# models/saved_models/*.pt
+# models/scalers/*.pkl
+# models/scalers/*.joblib
 
 # ===================================
-# Results and Outputs
+# Results - INCLUDED for complete project
 # ===================================
-results/*.json
-results/*.csv
-results/*.txt
+# Uncomment below if you want to exclude results
+# results/*.json
+# results/*.csv
+# results/*.txt
 *.log
 logs/
 
