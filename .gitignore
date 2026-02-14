@@ -38,6 +38,7 @@ ENV/
 .env
 .env.local
 .env.*.local
+.flask_secret
 
 # ===================================
 # Data Files - INCLUDED for complete project

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Logs | NEXUS AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' },
+                        neon: { cyan: '#06b6d4', green: '#10b981', red: '#f43f5e', purple: '#8b5cf6' }
+                    },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            background-color: #020617;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .log-line { transition: background 0.2s; }
+        .log-line:hover { background: rgba(6, 182, 212, 0.05); }
+        .log-INFO { color: #10b981; }
+        .log-WARNING { color: #f59e0b; }
+        .log-ERROR { color: #f43f5e; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans h-screen w-screen flex overflow-hidden">
+
+    <!-- Left Sidebar -->
+    <aside class="w-[80px] lg:w-[240px] bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 z-50 glass-panel">
+        <div>
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800/50">
+                <i class="ri-radar-fill text-2xl text-neon-cyan animate-pulse-slow"></i>
+                <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span class="text-neon-cyan">AI</span></span>
+            </div>
+            <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
+                <a href="/" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-dashboard-3-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Dashboard</span>
+                </a>
+                <a href="/settings" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-settings-3-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Settings</span>
+                </a>
+                <a href="/admin/logs" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                    <i class="ri-terminal-box-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">System Logs</span>
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800/50">
+            <div class="flex items-center justify-center lg:justify-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-red to-neon-purple flex items-center justify-center font-bold text-xs text-black">
+                    <i class="ri-shield-star-line text-sm"></i>
+                </div>
+                <div class="hidden lg:block">
+                    <p class="text-sm font-semibold text-white">Administrator</p>
+                    <p class="text-xs text-slate-500">Root Access</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Section -->
+    <main class="flex-1 flex flex-col h-full relative">
+
+        <!-- Top Header -->
+        <header class="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur flex items-center justify-between px-8 z-40 shrink-0">
+            <div class="flex items-center gap-4">
+                <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">System Logs</h2>
+                <span class="px-2 py-1 rounded bg-slate-800 text-slate-400 text-xs font-mono">ADMIN ONLY</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
+                    <div class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
+                    <span class="text-xs font-mono text-neon-green tracking-wide" id="autoRefresh">AUTO-REFRESH ON</span>
+                </div>
+                <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- Log Terminal -->
+        <div class="flex-1 overflow-hidden p-6 flex flex-col gap-4">
+
+            <!-- Controls -->
+            <div class="flex items-center gap-4">
+                <div class="relative flex-1">
+                    <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="logFilter" placeholder="Filter logs..." 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-sm font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-neon-cyan/50">
+                </div>
+                <button onclick="fetchLogs()" class="px-4 py-2 rounded-lg bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan text-sm font-medium hover:bg-neon-cyan/20 transition-colors">
+                    <i class="ri-refresh-line mr-1"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Terminal Window -->
+            <div class="glass-panel rounded-2xl flex-1 flex flex-col overflow-hidden">
+                <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
+                    <div class="w-3 h-3 rounded-full bg-neon-red/60"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-400/60"></div>
+                    <div class="w-3 h-3 rounded-full bg-neon-green/60"></div>
+                    <span class="ml-3 text-xs text-slate-500 font-mono">system.log — tail -100</span>
+                </div>
+                <div id="logContainer" class="flex-1 overflow-y-auto p-4 font-mono text-xs leading-6">
+                    <p class="text-slate-600 animate-pulse">Loading logs...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Clock
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        async function fetchLogs() {
+            try {
+                const res = await fetch('/api/admin/logs');
+                if (res.status === 401 || res.status === 403) {
+                    document.getElementById('logContainer').innerHTML =
+                        '<p class="text-neon-red">⛔ Access Denied. Admin login required.</p>';
+                    return;
+                }
+                const data = await res.json();
+                renderLogs(data.lines || []);
+            } catch (e) {
+                document.getElementById('logContainer').innerHTML =
+                    `<p class="text-neon-red">Error: ${e.message}</p>`;
+            }
+        }
+
+        function renderLogs(lines) {
+            const filter = document.getElementById('logFilter').value.toLowerCase();
+            const container = document.getElementById('logContainer');
+
+            const filtered = filter ? lines.filter(l => l.toLowerCase().includes(filter)) : lines;
+
+            container.innerHTML = filtered.map((line, i) => {
+                let levelClass = 'text-slate-400';
+                if (line.includes('| ERROR |')) levelClass = 'log-ERROR';
+                else if (line.includes('| WARNING |')) levelClass = 'log-WARNING';
+                else if (line.includes('| INFO |')) levelClass = 'log-INFO';
+
+                const num = String(i + 1).padStart(3, '0');
+                return `<div class="log-line px-2 py-0.5 rounded">` +
+                    `<span class="text-slate-600 select-none mr-3">${num}</span>` +
+                    `<span class="${levelClass}">${line.replace(/</g, '&lt;')}</span></div>`;
+            }).join('');
+
+            // Auto-scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Filter on keyup
+        document.getElementById('logFilter').addEventListener('keyup', fetchLogs);
+
+        // Initial load + auto-refresh every 10s
+        fetchLogs();
+        setInterval(fetchLogs, 10000);
+    </script>
+</body>
+</html>

@@ -195,6 +195,14 @@
                 </div>
             </div>
         </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-6 right-6 z-[200] hidden">
+            <div class="glass-panel px-5 py-3 rounded-xl border border-neon-green/30 flex items-center gap-3 shadow-lg shadow-black/20">
+                <i id="toastIcon" class="ri-checkbox-circle-fill text-neon-green text-lg"></i>
+                <span id="toastMsg" class="text-sm font-medium text-white"></span>
+            </div>
+        </div>
     </main>
 
     <!-- Auth Modal -->
@@ -427,6 +435,19 @@
             }
         }
 
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMsg');
+            msg.innerText = message;
+            icon.className = isError
+                ? 'ri-error-warning-fill text-neon-red text-lg'
+                : 'ri-checkbox-circle-fill text-neon-green text-lg';
+            toast.classList.remove('hidden');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
         async function handleAddTicker(e) {
             e.preventDefault();
             const input = document.getElementById('tickerInput');
@@ -439,13 +460,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ticker_symbol: ticker })
                 });
+                const data = await res.json();
 
                 if (res.ok) {
                     input.value = '';
-                    loadWatchlist();
+                    await loadWatchlist();
+                    showToast(data.message || `${ticker} added`);
+                } else {
+                    showToast(data.error || 'Failed to add', true);
                 }
             } catch (err) {
-                console.error('Failed to add ticker:', err);
+                showToast('Network error', true);
             }
         }
 
@@ -453,10 +478,11 @@
             try {
                 const res = await fetch(`/api/watchlist/${ticker}`, { method: 'DELETE' });
                 if (res.ok) {
-                    loadWatchlist();
+                    await loadWatchlist();
+                    showToast(`${ticker} removed from watchlist`);
                 }
             } catch (err) {
-                console.error('Failed to remove ticker:', err);
+                showToast('Failed to remove ticker', true);
             }
         }
 

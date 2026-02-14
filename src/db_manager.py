@@ -39,12 +39,13 @@ class User(Base):
     username = Column(String(80), unique=True, nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(256), nullable=False)
+    is_admin = Column(Integer, default=0)  # 0=user, 1=admin
     created_at = Column(DateTime, default=datetime.utcnow)
 
     watchlist = relationship('Watchlist', back_populates='user', cascade='all, delete-orphan')
 
     def to_dict(self):
-        return {"id": self.id, "username": self.username, "email": self.email}
+        return {"id": self.id, "username": self.username, "email": self.email, "is_admin": bool(self.is_admin)}
 
 
 class Watchlist(Base):
@@ -75,7 +76,26 @@ Session = sessionmaker(bind=engine)
 def init_db():
     """Creates all tables in the database."""
     Base.metadata.create_all(engine)
+    _migrate_db()  # safe migration for existing DBs
     logger.info(f"Database '{DB_NAME}' initialized successfully (tables: market_data, users, watchlist).")
+
+
+def _migrate_db():
+    """Add missing columns to existing tables (safe for repeat runs)."""
+    import sqlite3
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'is_admin' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+            conn.commit()
+            logger.info("Migration: Added 'is_admin' column to users table.")
+    except Exception as e:
+        logger.error(f"Migration error: {e}")
+    finally:
+        conn.close()
 
 
 # ==========================================

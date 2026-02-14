@@ -332,7 +332,25 @@
                     <div class="mt-2">
                         <span class="text-3xl font-bold text-white font-mono" id="sentiment">-</span>
                     </div>
-                    <p class="mt-2 text-xs text-neon-green">Positive Outlook</p>
+                    <p class="mt-2 text-xs" id="sentimentLabel">
+                        <span class="text-neon-green">Analysing…</span>
+                    </p>
+                    <p class="mt-1 text-[10px] text-slate-500 font-mono" id="headlineCount"></p>
+                </div>
+
+                <!-- Risk IQ Card (Sharpe Ratio) -->
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="ri-shield-check-line text-6xl text-yellow-400"></i>
+                    </div>
+                    <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider">Risk IQ</h3>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span class="text-3xl font-bold text-white font-mono" id="sharpeRatio">-</span>
+                        <span class="text-xs text-slate-500">Sharpe</span>
+                    </div>
+                    <p class="mt-2 text-xs font-mono" id="volatilityLabel">
+                        <span class="text-slate-500">Vol: --</span>
+                    </p>
                 </div>
 
                 <!-- Ensemble Forecast -->
@@ -342,10 +360,11 @@
                     <h3 class="text-neon-cyan text-sm font-bold uppercase tracking-wider flex items-center gap-2">
                         <i class="ri-magic-line"></i> Ensemble Forecast
                     </h3>
-                    <div class="mt-3">
+                    <div class="mt-3 flex items-baseline gap-2">
                         <span class="text-4xl font-bold text-white font-mono" id="pred-ensemble">-</span>
+                        <span class="text-sm font-mono text-neon-purple" id="ci-bounds"></span>
                     </div>
-                    <p class="mt-1 text-xs text-slate-400">Combined Model Confidence</p>
+                    <p class="mt-1 text-xs text-slate-400" id="ci-label">Combined Model Confidence</p>
                     <p class="mt-2 text-xs text-purple-400 font-mono" id="accuracy-ensemble">Accuracy: ~--</p>
                 </div>
             </div>
@@ -415,6 +434,21 @@
                 </div>
             </div>
 
+            <!-- SHAP Feature Impact -->
+            <div class="glass-panel rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="ri-flashlight-line text-neon-purple"></i>
+                        Feature Impact <span class="text-xs font-mono text-slate-500 ml-2">(SHAP)</span>
+                    </h3>
+                    <span class="text-xs font-mono px-2 py-1 rounded bg-slate-800 border border-slate-700" id="topDriver">Loading…</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">Which features are driving the XGBoost prediction up or down.</p>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="shapChart"></canvas>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -439,16 +473,37 @@
                 document.getElementById('price').innerHTML = `Rs. ${data.current_price}`;
                 document.getElementById('rsi').textContent = data.rsi;
 
-                // Sentiment coloring
+                // Sentiment — NLP
                 const sentEl = document.getElementById('sentiment');
                 sentEl.textContent = data.sentiment;
-                sentEl.className = `text-3xl font-bold font-mono ${data.sentiment > 0 ? 'text-neon-green' : 'text-neon-red'}`;
+                sentEl.className = `text-3xl font-bold font-mono ${data.sentiment > 0 ? 'text-neon-green' : data.sentiment < 0 ? 'text-neon-red' : 'text-slate-400'}`;
+
+                const labelEl = document.getElementById('sentimentLabel');
+                const labelColors = {'Bullish': 'text-neon-green', 'Bearish': 'text-neon-red', 'Neutral': 'text-slate-400'};
+                const lbl = data.sentiment_label || 'Neutral';
+                labelEl.innerHTML = `<span class="${labelColors[lbl] || 'text-slate-400'}">${lbl}</span>`;
+                document.getElementById('headlineCount').textContent = data.headline_count ? `${data.headline_count} headlines analysed` : '';
+
+                // Risk IQ — Sharpe Ratio
+                const sharpeEl = document.getElementById('sharpeRatio');
+                const sh = data.sharpe_ratio || 0;
+                sharpeEl.textContent = sh.toFixed(2);
+                sharpeEl.className = `text-3xl font-bold font-mono ${sh > 1 ? 'text-neon-green' : sh > 0 ? 'text-yellow-400' : 'text-neon-red'}`;
+                const volEl = document.getElementById('volatilityLabel');
+                volEl.innerHTML = `<span class="${sh > 1 ? 'text-neon-green' : sh > 0 ? 'text-yellow-400' : 'text-neon-red'}">Vol: ${(data.volatility || 0).toFixed(1)}%</span>`;
+
+                // GAN Confidence Interval
+                if (data.gan_confidence && data.gan_confidence.std > 0) {
+                    document.getElementById('ci-bounds').textContent = `± ${data.gan_confidence.std}`;
+                    document.getElementById('ci-label').textContent = `GAN 95% CI: [${data.gan_confidence.ci_lower}, ${data.gan_confidence.ci_upper}]`;
+                }
 
                 document.getElementById('pred-lstm').textContent = data.predictions.lstm;
                 document.getElementById('pred-xgb').textContent = data.predictions.xgboost;
                 document.getElementById('pred-ensemble').textContent = data.predictions.ensemble;
 
                 updateChart(data);
+                updateShapChart(data.shap);
 
             } catch (err) {
                 console.error("Fetch failed", err);
@@ -574,6 +629,59 @@
 
         // Fetch on load
         fetchMetrics();
+
+        // SHAP Feature Impact Chart
+        let shapChartInstance = null;
+        function updateShapChart(shapData) {
+            if (!shapData || !shapData.feature_names) return;
+            const ctx = document.getElementById('shapChart').getContext('2d');
+            if (shapChartInstance) shapChartInstance.destroy();
+
+            const colors = shapData.shap_values.map(v => v >= 0 ? '#10b981' : '#f43f5e');
+            const borderColors = shapData.shap_values.map(v => v >= 0 ? '#059669' : '#e11d48');
+
+            shapChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: shapData.feature_names,
+                    datasets: [{
+                        label: 'SHAP Value',
+                        data: shapData.shap_values,
+                        backgroundColor: colors,
+                        borderColor: borderColors,
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            callbacks: {
+                                label: (ctx) => {
+                                    const v = ctx.raw;
+                                    return `${v > 0 ? '↑ Pushes price UP' : '↓ Pushes price DOWN'}: ${v}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            title: { display: true, text: 'Impact on Prediction', color: '#94a3b8', font: { size: 11 } }
+                        },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Update top driver badge
+            document.getElementById('topDriver').textContent = `Top Driver: ${shapData.top_driver}`;
+        }
 
         // Load accuracy values from backtest results
         async function loadAccuracyValues() {

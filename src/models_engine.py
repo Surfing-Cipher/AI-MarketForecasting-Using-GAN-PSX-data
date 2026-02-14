@@ -95,11 +95,55 @@ class GANGenerator:
             logger.error(f"GAN generation failed: {e}")
             return []
 
+    def generate_confidence_interval(self, n_simulations=50):
+        """Run n_simulations GAN forward passes and compute stats.
+        Returns dict with mean, std, ci_lower, ci_upper, and a single representative path.
+        """
+        final_prices = []
+        representative_path = []
+        try:
+            for i in range(n_simulations):
+                noise = np.random.normal(0, 1, (1, self.latent_dim))
+                gen = self.model.predict(noise, verbose=0)
+                path = self.scaler.inverse_transform(gen[0])[:, 3]  # Close col
+                final_prices.append(float(path[-1]))
+                if i == 0:
+                    representative_path = path.tolist()
+
+            arr = np.array(final_prices)
+            mean_price = float(np.mean(arr))
+            std_price = float(np.std(arr))
+            ci_lower = float(mean_price - 1.96 * std_price)
+            ci_upper = float(mean_price + 1.96 * std_price)
+
+            logger.info(
+                f"GAN CI ({n_simulations} sims): "
+                f"{mean_price:.2f} ± {std_price:.2f} "
+                f"[{ci_lower:.2f}, {ci_upper:.2f}]"
+            )
+            return {
+                "mean": round(mean_price, 2),
+                "std": round(std_price, 2),
+                "ci_lower": round(ci_lower, 2),
+                "ci_upper": round(ci_upper, 2),
+                "path": representative_path,
+            }
+        except Exception as e:
+            logger.error(f"GAN confidence interval failed: {e}")
+            return {"mean": 0, "std": 0, "ci_lower": 0, "ci_upper": 0, "path": []}
+
 class LSTMForecaster:
     def __init__(self, model_path=None):
         _dir = os.path.dirname(os.path.abspath(__file__))
         if model_path is None:
-            model_path = os.path.normpath(os.path.join(_dir, '..', 'models', 'saved_models', 'lstm_model.h5'))
+            # Prefer GAN-augmented calibrated weights if available
+            calibrated = os.path.normpath(os.path.join(_dir, '..', 'models', 'saved_models', 'lstm_model_calibrated.h5'))
+            original = os.path.normpath(os.path.join(_dir, '..', 'models', 'saved_models', 'lstm_model.h5'))
+            if os.path.exists(calibrated):
+                model_path = calibrated
+                logger.info("Using GAN-augmented calibrated LSTM weights.")
+            else:
+                model_path = original
         self.lookback = 60
         # 1. Build Local Architecture (Bypasses Version Error)
         self.model = build_lstm_model(self.lookback)
@@ -175,3 +219,41 @@ class XGBoostForecaster:
         except Exception as e:
             logger.error(f"XGBoost prediction failed: {e}")
             return 0.0
+
+    def explain(self, features):
+        """Compute SHAP values for a single prediction.
+        Returns dict with feature_names, shap_values, base_value, top_driver.
+        """
+        feature_names = ['RSI', 'SMA_20', 'SMA_50', 'EMA_12', 'Close']
+        if not self.ready:
+            return {"feature_names": feature_names, "shap_values": [0]*5,
+                    "base_value": 0, "top_driver": "N/A"}
+        try:
+            import shap
+            arr = np.array([[
+                features.get('RSI', 0),
+                features.get('SMA_20', 0),
+                features.get('SMA_50', 0),
+                features.get('EMA_12', 0),
+                features.get('close', 0)
+            ]])
+            explainer = shap.TreeExplainer(self.model)
+            shap_values = explainer.shap_values(arr)
+            sv = shap_values[0].tolist()
+            base = float(explainer.expected_value)
+            # Identify top driver
+            abs_sv = [abs(v) for v in sv]
+            top_idx = abs_sv.index(max(abs_sv))
+            direction = "↑" if sv[top_idx] > 0 else "↓"
+            top_driver = f"{feature_names[top_idx]} {direction}"
+
+            return {
+                "feature_names": feature_names,
+                "shap_values": [round(v, 4) for v in sv],
+                "base_value": round(base, 2),
+                "top_driver": top_driver,
+            }
+        except Exception as e:
+            logger.error(f"SHAP explanation failed: {e}")
+            return {"feature_names": feature_names, "shap_values": [0]*5,
+                    "base_value": 0, "top_driver": "N/A"}

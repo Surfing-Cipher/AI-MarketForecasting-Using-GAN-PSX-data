@@ -1,10 +1,11 @@
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 from data_pipeline import PSXDataPipeline
 from models_engine import GANGenerator, LSTMForecaster, XGBoostForecaster
 from db_manager import (
     init_db, create_user, verify_user,
     add_to_watchlist, remove_from_watchlist, get_watchlist
 )
+from sentiment_engine import get_live_sentiment
 import numpy as np
 import pandas as pd
 import json
@@ -19,7 +20,20 @@ logger = logging.getLogger('nexus_ai')
 # Set template folder to parent directory's templates
 template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
 app = Flask(__name__, template_folder=template_dir)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
+
+# Persistent secret key — survives server restarts so sessions are preserved
+_secret_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '.flask_secret'))
+if os.environ.get('FLASK_SECRET_KEY'):
+    app.secret_key = os.environ['FLASK_SECRET_KEY']
+elif os.path.exists(_secret_path):
+    with open(_secret_path, 'r') as f:
+        app.secret_key = f.read().strip()
+else:
+    _generated = secrets.token_hex(32)
+    with open(_secret_path, 'w') as f:
+        f.write(_generated)
+    app.secret_key = _generated
+    logger.info(f'Generated new Flask secret key → .flask_secret')
 
 # --- Initialize Database & Modules ---
 init_db()
@@ -43,6 +57,19 @@ def login_required(f):
     return decorated
 
 
+def admin_required(f):
+    """Decorator to protect routes that require admin privileges."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({"error": "Authentication required"}), 401
+        if not session.get('is_admin'):
+            return jsonify({"error": "Admin privileges required"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ==========================================
 # PAGE ROUTES
 # ==========================================
@@ -59,8 +86,13 @@ def gan_page():
     return render_template('gan_model.html')
 
 @app.route('/settings')
-def coming_soon():
-    return render_template('coming_soon.html')
+def settings_page():
+    return render_template('settings.html')
+
+@app.route('/admin/logs')
+@admin_required
+def admin_logs_page():
+    return render_template('admin_logs.html')
 
 
 # ==========================================
@@ -109,6 +141,7 @@ def login():
 
     session['user_id'] = user['id']
     session['username'] = user['username']
+    session['is_admin'] = user.get('is_admin', False)
     return jsonify({"message": "Login successful", "user": user}), 200
 
 
@@ -177,8 +210,8 @@ def get_metrics():
         latest = df.iloc[-1]
         current_price = float(latest['Close'])
         
-        # 2. GAN Generation (Real Synthetic Scenarios)
-        gan_projection = gan.generate_synthetic_data()
+        # 2. GAN Confidence Interval (Monte Carlo)
+        gan_ci = gan.generate_confidence_interval(n_simulations=50)
 
         # 3. Forecasts (LSTM + XGBoost)
         recent_60_days = df['Close'].tail(60).values.tolist()
@@ -211,16 +244,40 @@ def get_metrics():
         else:
             ensemble = lstm_pred if lstm_pred > 0 else xgb_pred
 
-        # 5. JSON Response
+        # 5. Sharpe Ratio (Financial Risk IQ)
+        returns = df['Close'].pct_change().dropna().tail(90)
+        daily_rf = 0.05 / 252  # 5% annual risk-free rate → daily
+        excess = returns - daily_rf
+        sharpe = float(excess.mean() / excess.std()) * (252 ** 0.5) if len(returns) > 1 else 0.0
+        volatility = float(returns.std() * (252 ** 0.5) * 100) if len(returns) > 1 else 0.0
+
+        # 6. SHAP Explainability
+        shap_result = xgb_model.explain(xgb_features)
+
+        # 7. NLP Sentiment
+        sentiment_data = get_live_sentiment()
+
+        # 8. JSON Response
         response = {
             "current_price": round(current_price, 2),
             "rsi": round(float(latest['RSI']), 2),
-            "sentiment": 0.3,  # TODO: Replace with live NLP pipeline (FYP-2)
+            "sharpe_ratio": round(sharpe, 2),
+            "volatility": round(volatility, 2),
+            "sentiment": sentiment_data["score"],
+            "sentiment_label": sentiment_data["label"],
+            "headline_count": sentiment_data["headline_count"],
             "predictions": {
                 "lstm": round(float(lstm_pred), 2),
                 "xgboost": round(float(xgb_pred), 2),
                 "ensemble": round(float(ensemble), 2),
                 "xgb_gated": xgb_gated
+            },
+            "shap": shap_result,
+            "gan_confidence": {
+                "mean": gan_ci["mean"],
+                "std": gan_ci["std"],
+                "ci_lower": gan_ci["ci_lower"],
+                "ci_upper": gan_ci["ci_upper"],
             },
             "chart_data": {
                 "dates": df['Date'].dt.strftime('%Y-%m-%d').tolist(),
@@ -228,7 +285,7 @@ def get_metrics():
                 "bb_upper": df['BB_High'].tolist(),
                 "bb_lower": df['BB_Low'].tolist()
             },
-            "gan_projection": gan_projection
+            "gan_projection": gan_ci["path"]
         }
         return jsonify(response)
 
@@ -252,6 +309,57 @@ def get_backtest():
             return jsonify({"error": "Backtesting results not found. Run backtest.py first."}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ==========================================
+# ADMIN API ROUTES
+# ==========================================
+@app.route('/api/admin/logs')
+@admin_required
+def api_admin_logs():
+    """Tail the last 100 lines of system.log."""
+    from collections import deque
+    log_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'system.log'))
+    try:
+        if os.path.exists(log_path):
+            with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+                lines = list(deque(f, 100))
+            return jsonify({"lines": [l.rstrip() for l in lines]})
+        return jsonify({"lines": ["system.log not found."]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/admin/retrain', methods=['POST'])
+@admin_required
+def trigger_retrain():
+    """Runs GAN-LSTM augmented training asynchronously."""
+    import threading
+    import subprocess
+    import sys
+
+    script_path = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), '..', 'GAN_MODEL', 'gan_lstm_augmented_training.py')
+    )
+    if not os.path.exists(script_path):
+        return jsonify({"error": "Training script not found"}), 404
+
+    def _run_training():
+        logger.info("ADMIN: GAN-LSTM Retrain triggered.")
+        try:
+            result = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True, text=True, timeout=3600
+            )
+            if result.returncode == 0:
+                logger.info("ADMIN: Retrain completed successfully.")
+            else:
+                logger.error(f"ADMIN: Retrain failed: {result.stderr[-500:]}")
+        except Exception as e:
+            logger.error(f"ADMIN: Retrain exception: {e}")
+
+    t = threading.Thread(target=_run_training, daemon=True, name='retrain-worker')
+    t.start()
+    return jsonify({"status": "Retraining started in background", "thread": t.name})
 
 
 if __name__ == '__main__':
