@@ -5,7 +5,11 @@ import numpy as np
 import pandas as pd
 import json
 import os
+import logging
 import ta
+
+# Reuse the shared application logger
+logger = logging.getLogger('nexus_ai')
 
 # Set template folder to parent directory's templates
 template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
@@ -66,14 +70,16 @@ def get_metrics():
         }
         xgb_pred = xgb.predict(xgb_features)  # Returns 0.0 if model not ready
         
-        # Ensemble Average
-        ensemble = (lstm_pred + xgb_pred) / 2
+        # Weighted Ensemble (based on backtest accuracy: LSTM 68.4%, XGB 40.6%)
+        W_LSTM = 0.63
+        W_XGB  = 0.37
+        ensemble = (lstm_pred * W_LSTM) + (xgb_pred * W_XGB)
 
         # 4. JSON Response
         response = {
             "current_price": round(current_price, 2),
             "rsi": round(float(latest['RSI']), 2),
-            "sentiment": 0.3, # Placeholder
+            "sentiment": 0.3,  # TODO: Replace with live NLP pipeline (FYP-2)
             "predictions": {
                 "lstm": round(float(lstm_pred), 2),      # <--- REAL LSTM VALUE
                 "xgboost": round(float(xgb_pred), 2),
@@ -91,7 +97,7 @@ def get_metrics():
         return jsonify(response)
 
     except Exception as e:
-        print(f"Server Error: {e}")
+        logger.error(f"API /api/metrics error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/backtest')

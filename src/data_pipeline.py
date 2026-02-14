@@ -1,10 +1,13 @@
 import requests
 import pandas as pd
 import numpy as np
+import logging
 import ta
 from bs4 import BeautifulSoup
 from datetime import datetime, date, timedelta
 import io
+
+logger = logging.getLogger('nexus_ai')
 
 class PSXDataPipeline:
     def __init__(self, ticker="OGDC"):
@@ -21,12 +24,12 @@ class PSXDataPipeline:
         Scrapes live data from https://dps.psx.com.pk/company/{ticker}
         """
         url = f"{self.base_url}/company/{self.ticker}"
-        print(f"[INFO] Scraping Live Data from: {url}")
+        logger.info(f"Scraping Live Data from: {url}")
         
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
             if response.status_code != 200:
-                print(f"[WARN] PSX Website blocked us ({response.status_code}). Using fallback.")
+                logger.warning(f"PSX Website returned status {response.status_code}. Using fallback.")
                 return self._get_fallback_live_data()
 
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -48,7 +51,7 @@ class PSXDataPipeline:
             }
 
         except Exception as e:
-            print(f"[ERROR] Live Scraping Failed: {e}")
+            logger.error(f"Live Scraping Failed: {e}")
             return self._get_fallback_live_data()
 
     def fetch_historical_data(self, months=12):
@@ -56,7 +59,7 @@ class PSXDataPipeline:
         Fetches historical data via POST requests to /historical
         Logic derived from 'psx-data-reader' repository.
         """
-        print(f"[INFO] Downloading history for {self.ticker}...")
+        logger.info(f"Downloading history for {self.ticker}...")
         history_url = f"{self.base_url}/historical"
         all_data = []
         
@@ -105,7 +108,7 @@ class PSXDataPipeline:
             current_date = current_date.replace(day=1) - timedelta(days=1)
 
         if len(all_data) < 10:
-            print("[WARN] Direct scraping returned too little data. Switching to yfinance backup.")
+            logger.warning("Direct scraping returned too little data. Switching to yfinance backup.")
             return self._fetch_yahoo_backup()
 
         df = pd.DataFrame(all_data)
@@ -113,8 +116,20 @@ class PSXDataPipeline:
         return df
 
     def _get_fallback_live_data(self):
-        """Returns dummy data so the app doesn't crash during presentation"""
-        return {"current_price": 118.50, "volume": 150000}
+        """Falls back to the most recent record in nexus.db instead of hardcoded data."""
+        try:
+            from db_manager import fetch_data
+            df = fetch_data(self.ticker)
+            if not df.empty:
+                last = df.iloc[-1]
+                price = float(last['Close'])
+                volume = int(last['Volume'])
+                logger.info(f"Fallback: using last DB record — Price={price}, Volume={volume}")
+                return {"current_price": price, "volume": volume}
+        except Exception as e:
+            logger.error(f"DB fallback also failed: {e}")
+        logger.warning("All fallbacks exhausted. Returning zero values.")
+        return {"current_price": 0.0, "volume": 0}
 
     def _fetch_yahoo_backup(self):
         """Backup Source"""
