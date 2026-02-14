@@ -92,7 +92,8 @@
       442.4999694824219,
       443.9607849121094
     ],
-    "accuracy": 54.9,
+    "directional_accuracy_percent": 54.9,
+    "metric_notes": "Directional Accuracy: % of days where (Pred_t - Actual_t-1) had same sign as (Actual_t - Actual_t-1)",
     "actual": [
       278.41,
       277.92,
@@ -371,7 +372,8 @@
       109.80563354492188,
       110.67294311523438
     ],
-    "accuracy": 40.6,
+    "directional_accuracy_percent": 40.6,
+    "metric_notes": "Directional Accuracy: % of days where (Pred_t - Actual_t-1) had same sign as (Actual_t - Actual_t-1)",
     "actual": [
       278.41,
       277.92,
@@ -650,7 +652,8 @@
       276.1528015136719,
       277.3168640136719
     ],
-    "accuracy": 92.8,
+    "directional_accuracy_percent": 92.8,
+    "metric_notes": "Directional Accuracy: % of days where (Pred_t - Actual_t-1) had same sign as (Actual_t - Actual_t-1)",
     "actual": [
       278.41,
       277.92,

@@ -62,15 +62,15 @@
                 <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span class="text-neon-cyan">AI</span></span>
             </div>
             <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
-                <a href="/" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                <a href="/" aria-label="Dashboard" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-dashboard-3-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Dashboard</span>
                 </a>
-                <a href="/settings" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                <a href="/settings" aria-label="Settings" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-settings-3-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Settings</span>
                 </a>
-                <a href="/admin/logs" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                <a href="/admin/logs" aria-label="System Logs" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
                     <i class="ri-terminal-box-line text-xl"></i>
                     <span class="hidden lg:block font-medium">System Logs</span>
                 </a>
@@ -114,6 +114,7 @@
             <div class="flex items-center gap-4">
                 <div class="relative flex-1">
                     <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <label for="logFilter" class="sr-only">Filter logs</label>
                     <input type="text" id="logFilter" placeholder="Filter logs..." 
                         class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-sm font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-neon-cyan/50">
                 </div>
@@ -151,12 +152,24 @@
                         '<p class="text-neon-red">⛔ Access Denied. Admin login required.</p>';
                     return;
                 }
+                if (!res.ok) {
+                    throw new Error(`Server error: ${res.status}`);
+                }
                 const data = await res.json();
                 renderLogs(data.lines || []);
             } catch (e) {
                 document.getElementById('logContainer').innerHTML =
                     `<p class="text-neon-red">Error: ${e.message}</p>`;
             }
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         function renderLogs(lines) {
@@ -174,7 +187,7 @@
                 const num = String(i + 1).padStart(3, '0');
                 return `<div class="log-line px-2 py-0.5 rounded">` +
                     `<span class="text-slate-600 select-none mr-3">${num}</span>` +
-                    `<span class="${levelClass}">${line.replace(/</g, '&lt;')}</span></div>`;
+                    `<span class="${levelClass}">${escapeHtml(line)}</span></div>`;
             }).join('');
 
             // Auto-scroll to bottom

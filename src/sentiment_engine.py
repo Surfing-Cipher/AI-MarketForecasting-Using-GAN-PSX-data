@@ -5,6 +5,7 @@ Returns a live compound sentiment score (-1.0 to +1.0).
 import logging
 import time
 import requests
+import threading
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger('nexus_ai')
@@ -13,19 +14,22 @@ logger = logging.getLogger('nexus_ai')
 # VADER — lazy-loaded so nltk data is downloaded only once
 # ---------------------------------------------------------------------------
 _vader = None
+_vader_lock = threading.Lock()
 
 def _get_vader():
     global _vader
     if _vader is None:
-        import nltk
-        try:
-            from nltk.sentiment.vader import SentimentIntensityAnalyzer
-            _vader = SentimentIntensityAnalyzer()
-        except LookupError:
-            nltk.download('vader_lexicon', quiet=True)
-            from nltk.sentiment.vader import SentimentIntensityAnalyzer
-            _vader = SentimentIntensityAnalyzer()
-        logger.info("VADER SentimentIntensityAnalyzer initialised.")
+        with _vader_lock:
+            if _vader is None:
+                import nltk
+                try:
+                    from nltk.sentiment.vader import SentimentIntensityAnalyzer
+                    _vader = SentimentIntensityAnalyzer()
+                except LookupError:
+                    nltk.download('vader_lexicon', quiet=True)
+                    from nltk.sentiment.vader import SentimentIntensityAnalyzer
+                    _vader = SentimentIntensityAnalyzer()
+                logger.info("VADER SentimentIntensityAnalyzer initialised.")
     return _vader
 
 
@@ -79,6 +83,10 @@ def _scrape_google_news_rss(timeout=8):
                         headlines.append(text)
         except Exception as e:
             logger.warning(f"Google News RSS failed for '{query}': {e}")
+    
+    # Deduplicate while preserving order
+    headlines = list(dict.fromkeys(headlines))
+
     if headlines:
         logger.info(f"Google News RSS: scraped {len(headlines)} headlines")
     return headlines
@@ -134,8 +142,11 @@ def analyze_sentiment(headlines):
 # ---------------------------------------------------------------------------
 # Cached Orchestrator
 # ---------------------------------------------------------------------------
+# Cached Orchestrator
+# ---------------------------------------------------------------------------
 _cache = {"score": 0.0, "label": "Neutral", "count": 0, "ts": 0}
 _CACHE_TTL = 900  # 15 minutes
+_cache_lock = threading.Lock()
 
 
 def get_live_sentiment():
@@ -143,6 +154,8 @@ def get_live_sentiment():
     Returns dict: {"score": float, "label": str, "headline_count": int}
     """
     now = time.time()
+    
+    # 1. Fast path: Read cache without lock
     if now - _cache["ts"] < _CACHE_TTL and _cache["ts"] > 0:
         return {
             "score": _cache["score"],
@@ -150,25 +163,35 @@ def get_live_sentiment():
             "headline_count": _cache["count"],
         }
 
-    try:
-        headlines = scrape_psx_headlines()
-        score = analyze_sentiment(headlines)
+    # 2. Slow path: Cache expired, acquire lock
+    with _cache_lock:
+        # 3. Double-check timestamp inside lock (in case another thread updated it)
+        if now - _cache["ts"] < _CACHE_TTL and _cache["ts"] > 0:
+            return {
+                "score": _cache["score"],
+                "label": _cache["label"],
+                "headline_count": _cache["count"],
+            }
 
-        if score >= 0.15:
-            label = "Bullish"
-        elif score <= -0.15:
-            label = "Bearish"
-        else:
-            label = "Neutral"
+        try:
+            headlines = scrape_psx_headlines()
+            score = analyze_sentiment(headlines)
 
-        _cache.update({"score": score, "label": label,
-                        "count": len(headlines), "ts": now})
-        logger.info(
-            f"Sentiment updated: {score:.4f} ({label}) "
-            f"from {len(headlines)} headlines"
-        )
-    except Exception as e:
-        logger.error(f"Sentiment pipeline failed: {e}")
+            if score >= 0.15:
+                label = "Bullish"
+            elif score <= -0.15:
+                label = "Bearish"
+            else:
+                label = "Neutral"
+
+            _cache.update({"score": score, "label": label,
+                            "count": len(headlines), "ts": now})
+            logger.info(
+                f"Sentiment updated: {score:.4f} ({label}) "
+                f"from {len(headlines)} headlines"
+            )
+        except Exception as e:
+            logger.error(f"Sentiment pipeline failed: {e}")
 
     return {
         "score": _cache["score"],

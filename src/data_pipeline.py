@@ -36,14 +36,23 @@ class PSXDataPipeline:
 
             # Extract Price (Class: quote__close)
             price_tag = soup.select_one('.quote__close')
-            current_price = float(price_tag.get_text(strip=True).replace('Rs.', '').replace(',', '')) if price_tag else 0.0
+            current_price = 0.0
+            if price_tag:
+                try:
+                    current_price = float(price_tag.get_text(strip=True).replace('Rs.', '').replace(',', ''))
+                except ValueError:
+                    logger.warning("Could not parse price from page")
 
             # Extract Volume
             vol_label = soup.find('div', class_='stats_label', string='Volume')
             volume = 0
             if vol_label:
                 vol_val = vol_label.find_next_sibling('div', class_='stats_value')
-                volume = int(vol_val.get_text(strip=True).replace(',', ''))
+                if vol_val:
+                    try:
+                        volume = int(vol_val.get_text(strip=True).replace(',', ''))
+                    except ValueError:
+                        logger.warning("Could not parse volume from page")
 
             return {
                 "current_price": current_price,
@@ -101,8 +110,8 @@ class PSXDataPipeline:
                             })
                         except ValueError:
                             continue
-            except Exception:
-                pass # Skip month if fail
+            except Exception as e:
+                logger.debug(f"Failed to fetch data for {current_date.strftime('%Y-%m')}: {e}")
 
             # Move to previous month
             current_date = current_date.replace(day=1) - timedelta(days=1)

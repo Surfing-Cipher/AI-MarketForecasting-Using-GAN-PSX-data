@@ -1,5 +1,5 @@
-# NEXUS AI — Enterprise Market Forecasting Platform
-### Hybrid GAN-LSTM-XGBoost Ensemble for Pakistan Stock Exchange (PSX)
+# NEXUS AI — Advanced Market Forecasting Platform
+### Final Year Project | Hybrid GAN-LSTM-XGBoost Ensemble for Pakistan Stock Exchange (PSX)
 
 ![Python](https://img.shields.io/badge/python-3.9+-brightgreen.svg)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15-orange.svg)
@@ -8,7 +8,7 @@
 ![SHAP](https://img.shields.io/badge/SHAP-Explainable_AI-purple.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-> An enterprise-grade deep learning platform that combines **GAN-augmented LSTM**, **XGBoost**, and **NLP Sentiment Analysis** to forecast stock prices on the Pakistan Stock Exchange. Features real-time data scraping, SHAP explainability, GAN-generated confidence intervals, risk-adjusted metrics (Sharpe Ratio), admin log transparency, and a concept-drift retrain trigger — all served through a Bloomberg-inspired dark dashboard.
+> A production-ready deep learning platform that combines **GAN-augmented LSTM**, **XGBoost**, and **NLP Sentiment Analysis** to forecast stock prices on the Pakistan Stock Exchange. Features real-time data scraping, SHAP explainability, GAN-generated confidence intervals, risk-adjusted metrics (Sharpe Ratio), admin log transparency, and a concept-drift retrain trigger — all served through a Bloomberg-inspired dark dashboard.
 
 ---
 
@@ -249,7 +249,10 @@ This grants access to:
 
 | Property | Value |
 |---|---|
-| **Method** | Weighted average: LSTM × 0.63 + XGBoost × 0.37 |
+| **Method** | Weighted average:
+- LSTM Directional Accuracy: ~54.9%
+- XGBoost Directional Accuracy: ~40.6%
+- Ensemble Directional Accuracy: ~92.8% |
 | **Accuracy** | **92.8%** directional (90-day backtest) |
 | **Confidence Band** | GAN-generated Monte Carlo ± std dev |
 
@@ -565,10 +568,13 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Authorw
 
-**Surfing-Cipher**
+**Muhammad Abdullah**
 - GitHub: [@Surfing-Cipher](https://github.com/Surfing-Cipher)
+
+**Syed Anas**
+- GitHub: [@SyedAnas-123](https://github.com/SyedAnas-123)
 
 ---
 
