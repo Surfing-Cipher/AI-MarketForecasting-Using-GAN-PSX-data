@@ -244,6 +244,7 @@ This grants access to:
 | **Features** | RSI(14), SMA(20), SMA(50), EMA(12), Close, Volume |
 | **Accuracy** | 40.6% directional |
 | **Explainability** | SHAP values computed for every prediction |
+| **Note** | 40.6% (<50%) indicates inverse correlation or regime mismatch. However, this independent signal contributes to the ensemble's high accuracy (92.8%) by providing a contrarian perspective, which the weighted average (37%) effectively utilizes. |
 
 ### 4. Weighted Ensemble
 
