@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio | NEXUS AI</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' },
+                        neon: { cyan: '#06b6d4', green: '#10b981', red: '#f43f5e', purple: '#8b5cf6' }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            background-color: #020617;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .ticker-card {
+            transition: all 0.3s ease;
+        }
+        .ticker-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.2);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-200 font-sans h-screen w-screen flex overflow-hidden">
+
+    <!-- Left Sidebar -->
+    <aside class="w-[80px] lg:w-[240px] bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 z-50 glass-panel">
+        <div>
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800/50">
+                <i class="ri-radar-fill text-2xl text-neon-cyan animate-pulse-slow"></i>
+                <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span class="text-neon-cyan">AI</span></span>
+            </div>
+
+            <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
+                <a href="/" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-dashboard-3-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Dashboard</span>
+                </a>
+                <a href="/portfolio" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]">
+                    <i class="ri-line-chart-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Portfolio</span>
+                </a>
+                <a href="/gan-model" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-brain-fill text-xl"></i>
+                    <span class="hidden lg:block font-medium">GAN Model</span>
+                </a>
+                <a href="/settings" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-settings-4-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- User Profile (Bottom) -->
+        <div class="p-4 border-t border-slate-800/50">
+            <div id="sidebarUser" class="flex items-center justify-center lg:justify-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">?</div>
+                <div class="hidden lg:block">
+                    <p class="text-sm font-semibold text-white">Guest</p>
+                    <p class="text-xs text-slate-500">Not logged in</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Section -->
+    <main class="flex-1 flex flex-col h-full relative">
+
+        <!-- Top Header -->
+        <header class="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur flex items-center justify-between px-8 z-40">
+            <div class="flex items-center gap-4">
+                <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    Portfolio & Watchlist</h2>
+                <span class="px-2 py-1 rounded bg-slate-800 text-neon-cyan text-xs font-mono border border-neon-cyan/20">FYP-2</span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Auth Buttons -->
+                <div id="authButtons">
+                    <button onclick="showAuthModal('login')" class="text-xs px-4 py-2 rounded-lg bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 hover:bg-neon-cyan/20 transition font-medium">
+                        <i class="ri-login-box-line mr-1"></i> Login
+                    </button>
+                    <button onclick="showAuthModal('register')" class="text-xs px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition font-medium ml-2">
+                        <i class="ri-user-add-line mr-1"></i> Register
+                    </button>
+                </div>
+                <div id="userInfo" class="hidden flex items-center gap-3">
+                    <span class="text-sm font-mono text-neon-green" id="usernameDisplay"></span>
+                    <button onclick="handleLogout()" class="text-xs px-3 py-1 rounded bg-slate-800 text-slate-400 hover:text-neon-red hover:bg-slate-700 transition">
+                        <i class="ri-logout-box-r-line"></i> Logout
+                    </button>
+                </div>
+                <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+
+            <!-- Not Logged In Message -->
+            <div id="loginPrompt" class="hidden">
+                <div class="glass-panel p-8 rounded-2xl border-l-4 border-neon-cyan text-center max-w-lg mx-auto">
+                    <i class="ri-lock-2-line text-5xl text-neon-cyan mb-4 block"></i>
+                    <h3 class="text-xl font-bold text-white mb-2">Authentication Required</h3>
+                    <p class="text-slate-400 text-sm mb-6">Log in or register to manage your personal stock watchlist.</p>
+                    <button onclick="showAuthModal('login')" class="px-6 py-3 rounded-xl bg-neon-cyan text-slate-950 font-bold hover:bg-cyan-400 transition">
+                        <i class="ri-login-box-line mr-1"></i> Login to Continue
+                    </button>
+                </div>
+            </div>
+
+            <!-- Watchlist Section (shown when authenticated) -->
+            <div id="watchlistSection" class="hidden space-y-6">
+                <!-- Add Ticker Form -->
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-neon-green">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-neon-green/10 rounded-lg">
+                            <i class="ri-add-circle-line text-2xl text-neon-green"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-white">Track a Stock</h3>
+                            <p class="text-slate-400 text-xs mt-1">Add a PSX ticker symbol to your personal watchlist.</p>
+                        </div>
+                        <form onsubmit="handleAddTicker(event)" class="flex items-center gap-3">
+                            <input type="text" id="tickerInput" placeholder="e.g. OGDC"
+                                class="bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-2 text-white text-sm font-mono focus:outline-none focus:border-neon-cyan w-32 uppercase"
+                                required>
+                            <button type="submit" class="px-4 py-2 rounded-lg bg-neon-green text-slate-950 font-bold text-sm hover:bg-green-400 transition">
+                                <i class="ri-add-line mr-1"></i> Add
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Watchlist Grid -->
+                <div>
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="ri-star-line text-neon-cyan"></i>
+                        Your Watchlist
+                        <span id="watchlistCount" class="text-xs font-mono text-slate-500 ml-2">(0 tickers)</span>
+                    </h3>
+                    <div id="watchlistGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <!-- Ticker cards will be injected here -->
+                    </div>
+                    <div id="emptyWatchlist" class="hidden glass-panel p-8 rounded-2xl text-center">
+                        <i class="ri-inbox-line text-4xl text-slate-600 mb-3 block"></i>
+                        <p class="text-slate-500">Your watchlist is empty. Add a ticker symbol above to get started.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop">
+        <div class="glass-panel rounded-2xl p-8 w-full max-w-md mx-4 border border-slate-700/50 relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
+                <i class="ri-close-line text-xl"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <i class="ri-radar-fill text-3xl text-neon-purple mb-2 block"></i>
+                <h3 id="authTitle" class="text-xl font-bold text-white">Login</h3>
+            </div>
+
+            <div id="authError" class="hidden mb-4 p-3 rounded-lg bg-neon-red/10 border border-neon-red/20 text-neon-red text-sm text-center"></div>
+
+            <form onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Username</label>
+                    <input type="text" id="authUsername" required
+                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                </div>
+
+                <div id="emailField" class="hidden">
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Email</label>
+                    <input type="email" id="authEmail"
+                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Password</label>
+                    <input type="password" id="authPassword" required minlength="6"
+                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                </div>
+
+                <button type="submit" id="authSubmitBtn"
+                    class="w-full py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-cyan text-white font-bold hover:opacity-90 transition">
+                    Login
+                </button>
+            </form>
+
+            <p class="text-center text-sm text-slate-500 mt-4">
+                <span id="authSwitch"></span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CLOCK
+        // ==========================================
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        // ==========================================
+        // STATE
+        // ==========================================
+        let currentAuthMode = 'login';
+        let isAuthenticated = false;
+
+        // ==========================================
+        // AUTH MODAL
+        // ==========================================
+        function showAuthModal(mode) {
+            currentAuthMode = mode;
+            document.getElementById('authModal').classList.remove('hidden');
+            document.getElementById('authError').classList.add('hidden');
+            document.getElementById('authUsername').value = '';
+            document.getElementById('authPassword').value = '';
+
+            if (mode === 'register') {
+                document.getElementById('authTitle').innerText = 'Create Account';
+                document.getElementById('emailField').classList.remove('hidden');
+                document.getElementById('authEmail').required = true;
+                document.getElementById('authSubmitBtn').innerText = 'Register';
+                document.getElementById('authSwitch').innerHTML =
+                    'Already have an account? <a href="#" onclick="showAuthModal(\'login\')" class="text-neon-cyan hover:underline">Login</a>';
+            } else {
+                document.getElementById('authTitle').innerText = 'Login';
+                document.getElementById('emailField').classList.add('hidden');
+                document.getElementById('authEmail').required = false;
+                document.getElementById('authSubmitBtn').innerText = 'Login';
+                document.getElementById('authSwitch').innerHTML =
+                    'Don\'t have an account? <a href="#" onclick="showAuthModal(\'register\')" class="text-neon-cyan hover:underline">Register</a>';
+            }
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('authError');
+            errorEl.classList.add('hidden');
+
+            const body = {
+                username: document.getElementById('authUsername').value.trim(),
+                password: document.getElementById('authPassword').value,
+            };
+
+            let url = '/api/login';
+            if (currentAuthMode === 'register') {
+                body.email = document.getElementById('authEmail').value.trim();
+                url = '/api/register';
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    errorEl.innerText = data.error || 'An error occurred';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                closeAuthModal();
+                checkSession();
+            } catch (err) {
+                errorEl.innerText = 'Network error. Please try again.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        async function handleLogout() {
+            await fetch('/api/logout', { method: 'POST' });
+            checkSession();
+        }
+
+        // ==========================================
+        // SESSION CHECK
+        // ==========================================
+        async function checkSession() {
+            try {
+                const res = await fetch('/api/session');
+                const data = await res.json();
+
+                if (data.authenticated) {
+                    isAuthenticated = true;
+                    document.getElementById('authButtons').classList.add('hidden');
+                    document.getElementById('userInfo').classList.remove('hidden');
+                    document.getElementById('usernameDisplay').innerText = data.user.username;
+                    document.getElementById('loginPrompt').classList.add('hidden');
+                    document.getElementById('watchlistSection').classList.remove('hidden');
+
+                    // Update sidebar
+                    document.getElementById('sidebarUser').innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">
+                            ${data.user.username[0].toUpperCase()}
+                        </div>
+                        <div class="hidden lg:block">
+                            <p class="text-sm font-semibold text-white">${data.user.username}</p>
+                            <p class="text-xs text-neon-green">Authenticated</p>
+                        </div>
+                    `;
+
+                    loadWatchlist();
+                } else {
+                    isAuthenticated = false;
+                    document.getElementById('authButtons').classList.remove('hidden');
+                    document.getElementById('userInfo').classList.add('hidden');
+                    document.getElementById('loginPrompt').classList.remove('hidden');
+                    document.getElementById('watchlistSection').classList.add('hidden');
+
+                    document.getElementById('sidebarUser').innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">?</div>
+                        <div class="hidden lg:block">
+                            <p class="text-sm font-semibold text-white">Guest</p>
+                            <p class="text-xs text-slate-500">Not logged in</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Session check failed:', err);
+            }
+        }
+
+        // ==========================================
+        // WATCHLIST
+        // ==========================================
+        async function loadWatchlist() {
+            try {
+                const res = await fetch('/api/watchlist');
+                const data = await res.json();
+                const tickers = data.watchlist || [];
+
+                document.getElementById('watchlistCount').innerText = `(${tickers.length} ticker${tickers.length !== 1 ? 's' : ''})`;
+
+                const grid = document.getElementById('watchlistGrid');
+                const empty = document.getElementById('emptyWatchlist');
+
+                if (tickers.length === 0) {
+                    grid.innerHTML = '';
+                    empty.classList.remove('hidden');
+                    return;
+                }
+
+                empty.classList.add('hidden');
+                grid.innerHTML = tickers.map(ticker => `
+                    <div class="ticker-card glass-panel rounded-xl p-5 relative group">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-neon-cyan/10 flex items-center justify-center">
+                                    <i class="ri-stock-line text-neon-cyan text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-white font-bold text-lg font-mono">${ticker}</h4>
+                                    <p class="text-slate-500 text-xs">PSX Listed</p>
+                                </div>
+                            </div>
+                            <button onclick="handleRemoveTicker('${ticker}')" 
+                                class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-neon-red p-1"
+                                title="Remove from watchlist">
+                                <i class="ri-close-circle-line text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-1 rounded text-[10px] font-mono bg-neon-green/10 text-neon-green border border-neon-green/20">TRACKED</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to load watchlist:', err);
+            }
+        }
+
+        async function handleAddTicker(e) {
+            e.preventDefault();
+            const input = document.getElementById('tickerInput');
+            const ticker = input.value.trim().toUpperCase();
+            if (!ticker) return;
+
+            try {
+                const res = await fetch('/api/watchlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker_symbol: ticker })
+                });
+
+                if (res.ok) {
+                    input.value = '';
+                    loadWatchlist();
+                }
+            } catch (err) {
+                console.error('Failed to add ticker:', err);
+            }
+        }
+
+        async function handleRemoveTicker(ticker) {
+            try {
+                const res = await fetch(`/api/watchlist/${ticker}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadWatchlist();
+                }
+            } catch (err) {
+                console.error('Failed to remove ticker:', err);
+            }
+        }
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        checkSession();
+    </script>
+</body>
+
+</html>

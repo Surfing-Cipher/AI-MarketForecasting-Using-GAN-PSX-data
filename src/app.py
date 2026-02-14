@@ -1,11 +1,16 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request, session
 from data_pipeline import PSXDataPipeline
 from models_engine import GANGenerator, LSTMForecaster, XGBoostForecaster
+from db_manager import (
+    init_db, create_user, verify_user,
+    add_to_watchlist, remove_from_watchlist, get_watchlist
+)
 import numpy as np
 import pandas as pd
 import json
 import os
 import logging
+import secrets
 import ta
 
 # Reuse the shared application logger
@@ -14,22 +19,40 @@ logger = logging.getLogger('nexus_ai')
 # Set template folder to parent directory's templates
 template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
 app = Flask(__name__, template_folder=template_dir)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
 
-# --- Initialize Modules ---
-# We keep your existing Pipeline
+# --- Initialize Database & Modules ---
+init_db()
 pipeline = PSXDataPipeline(ticker="OGDC") 
 gan = GANGenerator()
 lstm = LSTMForecaster()
-xgb = XGBoostForecaster()
+xgb_model = XGBoostForecaster()
 
+
+# ==========================================
+# AUTH HELPER
+# ==========================================
+def login_required(f):
+    """Decorator to protect routes that require authentication."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({"error": "Authentication required"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ==========================================
+# PAGE ROUTES
+# ==========================================
 @app.route('/')
 def home():
     return render_template('dashboard.html')
 
 @app.route('/portfolio')
 def portfolio():
-    # Placeholder
-    return render_template('coming_soon.html')
+    return render_template('portfolio.html')
 
 @app.route('/gan-model')
 def gan_page():
@@ -39,6 +62,108 @@ def gan_page():
 def coming_soon():
     return render_template('coming_soon.html')
 
+
+# ==========================================
+# AUTH API ROUTES
+# ==========================================
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+    password = data.get('password', '')
+
+    if not username or not email or not password:
+        return jsonify({"error": "username, email, and password are required"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    user = create_user(username, email, password)
+    if user is None:
+        return jsonify({"error": "Username or email already exists"}), 409
+
+    # Auto-login after registration
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    return jsonify({"message": "Registration successful", "user": user}), 201
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify({"error": "username and password are required"}), 400
+
+    user = verify_user(username, password)
+    if user is None:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    return jsonify({"message": "Login successful", "user": user}), 200
+
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"message": "Logged out successfully"}), 200
+
+
+@app.route('/api/session')
+def get_session():
+    if 'user_id' in session:
+        return jsonify({
+            "authenticated": True,
+            "user": {"id": session['user_id'], "username": session['username']}
+        }), 200
+    return jsonify({"authenticated": False}), 401
+
+
+# ==========================================
+# WATCHLIST API ROUTES
+# ==========================================
+@app.route('/api/watchlist', methods=['GET'])
+@login_required
+def api_get_watchlist():
+    tickers = get_watchlist(session['user_id'])
+    return jsonify({"watchlist": tickers}), 200
+
+
+@app.route('/api/watchlist', methods=['POST'])
+@login_required
+def api_add_watchlist():
+    data = request.get_json()
+    if not data or not data.get('ticker_symbol'):
+        return jsonify({"error": "ticker_symbol is required"}), 400
+
+    ticker = data['ticker_symbol'].strip().upper()
+    added = add_to_watchlist(session['user_id'], ticker)
+    if added:
+        return jsonify({"message": f"{ticker} added to watchlist"}), 201
+    return jsonify({"message": f"{ticker} already in watchlist"}), 200
+
+
+@app.route('/api/watchlist/<ticker>', methods=['DELETE'])
+@login_required
+def api_remove_watchlist(ticker):
+    removed = remove_from_watchlist(session['user_id'], ticker.upper())
+    if removed:
+        return jsonify({"message": f"{ticker.upper()} removed from watchlist"}), 200
+    return jsonify({"error": f"{ticker.upper()} not found in watchlist"}), 404
+
+
+# ==========================================
+# DATA API ROUTES
+# ==========================================
 @app.route('/api/metrics')
 def get_metrics():
     try:
@@ -56,37 +181,48 @@ def get_metrics():
         gan_projection = gan.generate_synthetic_data()
 
         # 3. Forecasts (LSTM + XGBoost)
-        # LSTM: Convert to list for compatibility
         recent_60_days = df['Close'].tail(60).values.tolist()
         lstm_pred = lstm.predict(recent_60_days)
         
-        # XGBoost: Compute technical indicators and predict
         xgb_features = {
             'RSI': float(latest['RSI']),
             'SMA_20': float(ta.trend.SMAIndicator(df['Close'], window=20).sma_indicator().iloc[-1]),
             'SMA_50': float(ta.trend.SMAIndicator(df['Close'], window=50).sma_indicator().iloc[-1]),
             'EMA_12': float(ta.trend.EMAIndicator(df['Close'], window=12).ema_indicator().iloc[-1]),
-            'close': current_price  # <--- CRITICAL ADDITION
+            'close': current_price
         }
-        xgb_pred = xgb.predict(xgb_features)  # Returns 0.0 if model not ready
+        xgb_pred = xgb_model.predict(xgb_features)
         
-        # Weighted Ensemble (based on backtest accuracy: LSTM 68.4%, XGB 40.6%)
-        W_LSTM = 0.63
-        W_XGB  = 0.37
-        ensemble = (lstm_pred * W_LSTM) + (xgb_pred * W_XGB)
+        # 4. XGBoost Gating — exclude XGB if its prediction deviates > 50% from LSTM
+        xgb_gated = False
+        if lstm_pred > 0 and xgb_pred > 0:
+            deviation = abs(xgb_pred - lstm_pred) / lstm_pred
+            if deviation < 0.5:
+                # Both models are in reasonable agreement
+                ensemble = (lstm_pred * 0.63) + (xgb_pred * 0.37)
+            else:
+                # XGBoost is miscalibrated — use LSTM only
+                ensemble = lstm_pred
+                xgb_gated = True
+                logger.warning(
+                    f"XGBoost GATED: deviation={deviation:.1%} "
+                    f"(LSTM={lstm_pred:.2f}, XGB={xgb_pred:.2f})"
+                )
+        else:
+            ensemble = lstm_pred if lstm_pred > 0 else xgb_pred
 
-        # 4. JSON Response
+        # 5. JSON Response
         response = {
             "current_price": round(current_price, 2),
             "rsi": round(float(latest['RSI']), 2),
             "sentiment": 0.3,  # TODO: Replace with live NLP pipeline (FYP-2)
             "predictions": {
-                "lstm": round(float(lstm_pred), 2),      # <--- REAL LSTM VALUE
+                "lstm": round(float(lstm_pred), 2),
                 "xgboost": round(float(xgb_pred), 2),
-                "ensemble": round(float(ensemble), 2)
+                "ensemble": round(float(ensemble), 2),
+                "xgb_gated": xgb_gated
             },
             "chart_data": {
-                # Ensure Date is formatted for Chart.js
                 "dates": df['Date'].dt.strftime('%Y-%m-%d').tolist(),
                 "close": df['Close'].tolist(),
                 "bb_upper": df['BB_High'].tolist(),
@@ -99,6 +235,7 @@ def get_metrics():
     except Exception as e:
         logger.error(f"API /api/metrics error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/backtest')
 def get_backtest():
@@ -116,6 +253,7 @@ def get_backtest():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 if __name__ == '__main__':
-    print("Starting FYP-1 Dashboard...")
+    logger.info("Starting Nexus AI Dashboard on port 5000...")
     app.run(debug=True, port=5000)
