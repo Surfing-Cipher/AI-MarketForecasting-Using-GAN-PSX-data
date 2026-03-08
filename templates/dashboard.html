@@ -627,8 +627,11 @@
             });
         }
 
-        // Fetch on load
+        // Fetch on load, then auto-refresh every 10 seconds — Fix #5
+        // Note: myChart.destroy() and shapChartInstance.destroy() are called inside
+        // updateChart() / updateShapChart() on every render, preventing Chart.js memory leaks.
         fetchMetrics();
+        setInterval(fetchMetrics, 10000);
 
         // SHAP Feature Impact Chart
         let shapChartInstance = null;

@@ -12,6 +12,7 @@ import json
 import os
 import logging
 import secrets
+import time
 import ta
 
 # Reuse the shared application logger
@@ -41,6 +42,10 @@ pipeline = PSXDataPipeline(ticker="OGDC")
 gan = GANGenerator()
 lstm = LSTMForecaster()
 xgb_model = XGBoostForecaster()
+
+# --- Fix #2: GAN Memoization Cache (15-minute TTL) ---
+_GAN_CACHE_TTL = 900  # seconds
+_gan_cache = {"result": None, "ts": 0.0}
 
 
 # ==========================================
@@ -210,8 +215,15 @@ def get_metrics():
         latest = df.iloc[-1]
         current_price = float(latest['Close'])
         
-        # 2. GAN Confidence Interval (Monte Carlo)
-        gan_ci = gan.generate_confidence_interval(n_simulations=50)
+        # 2. GAN Confidence Interval (Monte Carlo) — Fix #2: 15-min memoization cache
+        _now = time.time()
+        if _gan_cache["result"] is None or (_now - _gan_cache["ts"]) > _GAN_CACHE_TTL:
+            logger.info("GAN cache MISS — running 50 Monte Carlo simulations.")
+            _gan_cache["result"] = gan.generate_confidence_interval(n_simulations=50)
+            _gan_cache["ts"] = _now
+        else:
+            logger.debug("GAN cache HIT — serving memoized confidence interval.")
+        gan_ci = _gan_cache["result"]
 
         # 3. Forecasts (LSTM + XGBoost)
         recent_60_days = df['Close'].tail(60).values.tolist()
@@ -244,8 +256,9 @@ def get_metrics():
         else:
             ensemble = lstm_pred if lstm_pred > 0 else xgb_pred
 
-        # 5. Sharpe Ratio (Financial Risk IQ)
-        returns = df['Close'].pct_change().dropna().tail(90)
+        # 5. Sharpe Ratio (Financial Risk IQ) — Fix #3: Logarithmic Returns
+        # Log returns are symmetric and better suited for high-volatility PSX tickers like OGDC.
+        returns = np.log(df['Close'] / df['Close'].shift(1)).dropna().tail(90)
         daily_rf = 0.05 / 252  # 5% annual risk-free rate → daily
         excess = returns - daily_rf
         sharpe = float(excess.mean() / excess.std()) * (252 ** 0.5) if len(returns) > 1 else 0.0
@@ -344,18 +357,20 @@ def trigger_retrain():
         return jsonify({"error": "Training script not found"}), 404
 
     def _run_training():
-        logger.info("ADMIN: GAN-LSTM Retrain triggered.")
+        """Fix #4: Use Popen with start_new_session=True so the training process
+        gets its own OS session, survives Flask restarts, and cannot become a zombie.
+        """
+        logger.info("ADMIN: GAN-LSTM Retrain triggered (detached process group).")
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 [sys.executable, script_path],
-                capture_output=True, text=True, timeout=3600
+                start_new_session=True,   # Detaches from Flask's process group (Linux)
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
-            if result.returncode == 0:
-                logger.info("ADMIN: Retrain completed successfully.")
-            else:
-                logger.error(f"ADMIN: Retrain failed: {result.stderr[-500:]}")
+            logger.info(f"ADMIN: Retrain process started with PID={proc.pid} (detached).")
         except Exception as e:
-            logger.error(f"ADMIN: Retrain exception: {e}")
+            logger.error(f"ADMIN: Retrain launch failed: {e}")
 
     t = threading.Thread(target=_run_training, daemon=True, name='retrain-worker')
     t.start()

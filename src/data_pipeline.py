@@ -3,9 +3,12 @@ import pandas as pd
 import numpy as np
 import logging
 import ta
+import pytz
 from bs4 import BeautifulSoup
 from datetime import datetime, date, timedelta
 import io
+
+_PKT = pytz.timezone('Asia/Karachi')
 
 logger = logging.getLogger('nexus_ai')
 
@@ -141,12 +144,25 @@ class PSXDataPipeline:
         return {"current_price": 0.0, "volume": 0}
 
     def _fetch_yahoo_backup(self):
-        """Backup Source"""
+        """Backup source via yfinance. Timestamps are localized from UTC → Asia/Karachi
+        and stripped of tz-info so they match PSX's tz-naive datetime format.
+        This prevents look-ahead bias caused by a raw UTC→PKT offset of +5 hours.
+        """
         import yfinance as yf
         # Yahoo uses .PA extension for PSX
         ticker_sym = self.ticker if self.ticker.endswith(".PA") else f"{self.ticker}.PA"
         df = yf.download(ticker_sym, period="1y", progress=False)
         df.reset_index(inplace=True)
+
+        # --- Temporal Synchronization: Fix #1 ---
+        # yfinance Date column may be tz-aware (UTC) or tz-naive depending on version.
+        # Normalise to UTC first, then convert to PKT, then strip tz-info for DB compatibility.
+        df['Date'] = pd.to_datetime(df['Date'])
+        if df['Date'].dt.tz is None:
+            # Assume UTC if tz-naive (older yfinance)
+            df['Date'] = df['Date'].dt.tz_localize('UTC')
+        df['Date'] = df['Date'].dt.tz_convert(_PKT).dt.tz_localize(None)
+        logger.info("yfinance backup: timestamps localized UTC → Asia/Karachi (tz-naive).")
         return df
 
     def get_processed_data(self):
