@@ -6,6 +6,7 @@ from db_manager import (
     add_to_watchlist, remove_from_watchlist, get_watchlist
 )
 from sentiment_engine import get_live_sentiment
+from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
 import json
@@ -13,6 +14,12 @@ import os
 import logging
 import secrets
 import time
+
+# --- Load .env file first, before anything else reads os.environ ---
+# Looks for .env in the project root (one level above /src/)
+_env_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(dotenv_path=_env_path)
+
 import ta
 
 # Reuse the shared application logger
@@ -22,10 +29,12 @@ logger = logging.getLogger('nexus_ai')
 template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
 app = Flask(__name__, template_folder=template_dir)
 
-# Persistent secret key — survives server restarts so sessions are preserved
+# --- Secret Key Resolution (Priority: .env > env var > .flask_secret file > auto-generate) ---
+# The .env file is the recommended method. The file-based fallback is kept for backward compatibility.
 _secret_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '.flask_secret'))
 if os.environ.get('FLASK_SECRET_KEY'):
     app.secret_key = os.environ['FLASK_SECRET_KEY']
+    logger.info('Flask secret key loaded from environment variable (FLASK_SECRET_KEY).')
 elif os.path.exists(_secret_path):
     with open(_secret_path, 'r') as f:
         app.secret_key = f.read().strip()
@@ -34,7 +43,8 @@ else:
     with open(_secret_path, 'w') as f:
         f.write(_generated)
     app.secret_key = _generated
-    logger.info(f'Generated new Flask secret key → .flask_secret')
+    logger.info('Generated new Flask secret key → .flask_secret')
+
 
 # --- Initialize Database & Modules ---
 init_db()
@@ -378,5 +388,6 @@ def trigger_retrain():
 
 
 if __name__ == '__main__':
-    logger.info("Starting Nexus AI Dashboard on port 5000...")
-    app.run(debug=True, port=5000)
+    _debug = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
+    logger.info(f"Starting Nexus AI Dashboard on port 5000 (debug={_debug})...")
+    app.run(debug=_debug, port=5000)

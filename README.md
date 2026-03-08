@@ -6,14 +6,17 @@
 ![Flask](https://img.shields.io/badge/Flask-3.0-lightgrey.svg)
 ![XGBoost](https://img.shields.io/badge/XGBoost-2.0-blue.svg)
 ![SHAP](https://img.shields.io/badge/SHAP-Explainable_AI-purple.svg)
+![pytz](https://img.shields.io/badge/pytz-PSX_Timezone_Sync-teal.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Phase](https://img.shields.io/badge/Phase-5_Production_%26_Scalability-gold.svg)
 
-> A production-ready deep learning platform that combines **GAN-augmented LSTM**, **XGBoost**, and **NLP Sentiment Analysis** to forecast stock prices on the Pakistan Stock Exchange. Features real-time data scraping, SHAP explainability, GAN-generated confidence intervals, risk-adjusted metrics (Sharpe Ratio), admin log transparency, and a concept-drift retrain trigger — all served through a Bloomberg-inspired dark dashboard.
+> A production-ready deep learning platform that combines **GAN-augmented LSTM**, **XGBoost**, and **NLP Sentiment Analysis** to forecast stock prices on the Pakistan Stock Exchange. Features real-time data scraping, SHAP explainability, GAN-generated confidence intervals, risk-adjusted metrics (Sharpe Ratio using **logarithmic returns**), admin log transparency, and a concept-drift retrain trigger — all served through a Bloomberg-inspired dark dashboard with **10-second auto-refresh**. Phase 5 hardened for production scalability: temporal synchronization, Monte Carlo memoization, zombie-proof subprocess management, and Chart.js memory-safe rendering.
 
 ---
 
 ## Table of Contents
 
+- [Phase 5 Hardening](#-phase-5-production-hardening)
 - [Key Results](#-key-results)
 - [Features](#-features)
 - [System Architecture](#-system-architecture)
@@ -31,7 +34,22 @@
 
 ---
 
-## 📊 Key Results
+## 🏭 Phase 5: Production Hardening
+
+> **Branch:** [`final-audit`](https://github.com/Surfing-Cipher/AI-MarketForecasting-Using-GAN-PSX-data/tree/final-audit)
+
+Phase 5 applied 5 corrective actions identified in a pre-production stress-test audit:
+
+| # | Fix | File | Impact |
+|---|---|---|---|
+| 1 | **Temporal Synchronization** | `data_pipeline.py` | yfinance timestamps localized `UTC → Asia/Karachi` (PKT), eliminating 5-hour look-ahead bias from the Ensemble |
+| 2 | **GAN Monte Carlo Memoization** | `app.py` | 15-minute TTL cache for `generate_confidence_interval()` — repeat API calls drop from seconds → milliseconds |
+| 3 | **Logarithmic Returns (Sharpe)** | `app.py` | `pct_change()` replaced with `np.log(Close/Close.shift(1))` — symmetric, statistically sound for high-volatility OGDC |
+| 4 | **Zombie-Proof Subprocess** | `app.py` | `subprocess.Popen(start_new_session=True)` — retraining detached from Flask's OS process group, survives server restarts |
+| 5 | **10-Second Auto-Refresh** | `dashboard.html` | `setInterval(fetchMetrics, 10000)` added; `myChart.destroy()` guards prevent Chart.js memory leaks |
+
+---
+
 
 | Model | Directional Accuracy (90-day backtest) | Role |
 |---|---|---|
@@ -54,20 +72,21 @@
 - **Sharpe Ratio (Risk IQ)** — Annualized risk-adjusted return metric with color-coded dashboard card (90-day rolling, 5% risk-free rate)
 
 ### Data Pipeline
-- **Real-time PSX Scraping** — Scrapes OHLCV data from `dps.psx.com.pk` with Cloudflare bypass
-- **Yahoo Finance Fallback** — Automatic failover to `yfinance` when PSX is unreachable
+- **Real-time PSX Scraping** — Scrapes OHLCV data from `dps.psx.com.pk` with browser-header spoofing
+- **Yahoo Finance Fallback** — Automatic failover to `yfinance` when PSX is unreachable; timestamps automatically converted from **UTC → Asia/Karachi (PKT)** to prevent look-ahead bias
 - **SQLite Persistence** — All market data stored in `nexus.db` with upsert logic
 - **Technical Indicators** — RSI(14), SMA(20/50), EMA(12), Bollinger Bands computed via the `ta` library
 
-### Enterprise Features (FYP-2)
+### Enterprise Features (Phase 2 & 5)
 - **User Authentication** — Register/login system with password hashing (Werkzeug), session management, persistent Flask secret key
 - **Admin Log Viewer** — Terminal-style `/admin/logs` page tailing system.log with color-coded log levels, live search filter, and 10-second auto-refresh
-- **Concept Drift Retrain Trigger** — `POST /api/admin/retrain` runs GAN-LSTM augmented training in a background thread (async, won't freeze the dashboard)
+- **Concept Drift Retrain Trigger** — `POST /api/admin/retrain` launches GAN-LSTM training as a **detached OS process** (`Popen(start_new_session=True)`) — survives Flask restarts without zombie leaks
 - **Portfolio / Watchlist** — Per-user watchlist management via REST API
 - **Role-Based Access** — `is_admin` flag on User model, `admin_required` decorator for protected routes (HTTP 403 for non-admins)
 
 ### Dashboard UI
 - **Bloomberg-Inspired Dark Theme** — Glassmorphism panels, neon accents, JetBrains Mono typography
+- **10-Second Auto-Refresh** — `setInterval(fetchMetrics, 10000)` keeps all metrics live; Chart.js `destroy()` guards prevent memory leaks
 - **Interactive Chart.js Visualizations** — Close prices, Bollinger Bands, 90-day backtest overlays
 - **Click-to-Inspect Model Cards** — Click LSTM/XGBoost/Ensemble cards to switch the chart to that model's backtest
 - **Responsive Layout** — Collapsible sidebar, works on desktop and tablet screens
@@ -144,18 +163,29 @@ graph TB
 git clone https://github.com/Surfing-Cipher/AI-MarketForecasting-Using-GAN-PSX-data.git
 cd AI-MarketForecasting-Using-GAN-PSX-data
 
+# (optional) checkout the Phase 5 production branch
+git checkout final-audit
+
 # 2. Create virtual environment
 python -m venv venv
 venv\Scripts\activate      # Windows
-# source venv/bin/activate  # Linux / macOS
+# source venv/bin/activate.fish  # Linux / macOS (Fish shell)
+# source venv/bin/activate       # Linux / macOS (Bash/Zsh)
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Initialize the database
+# 4. Configure environment variables  ← NEW
+#    Copy the template and edit your own secret key:
+cp .env.example .env
+#    Or generate a cryptographically secure key directly:
+python -c "import secrets; print('FLASK_SECRET_KEY=' + secrets.token_hex(32))"
+#    Paste the output into .env
+
+# 5. Initialize the database
 python src/db_manager.py
 
-# 5. Start the dashboard
+# 6. Start the dashboard
 python src/app.py
 ```
 
@@ -278,7 +308,8 @@ This grants access to:
 
 | Property | Value |
 |---|---|
-| **Formula** | (Mean excess return / Std deviation of excess return) × √252 |
+| **Return Type** | **Logarithmic** — `np.log(Close / Close.shift(1))` (Phase 5 upgrade; symmetric, unbiased for high-volatility tickers) |
+| **Formula** | (Mean excess log-return / Std dev of excess log-return) × √252 |
 | **Rolling Window** | 90 trading days |
 | **Risk-Free Rate** | 5% annualized (Pakistani T-Bill benchmark) |
 | **Dashboard** | Color-coded card: 🟢 > 1.0, 🟡 0–1.0, 🔴 < 0 |
@@ -462,6 +493,7 @@ AI-MarketForecasting-Using-GAN-PSX-data/
 | **NLP** | NLTK (VADER Sentiment Analyzer) |
 | **Explainability** | SHAP (SHapley Additive exPlanations) |
 | **Data Processing** | Pandas 2.1, NumPy 1.26, TA (Technical Analysis library) |
+| **Timezone Handling** | pytz (UTC → Asia/Karachi synchronization) |
 | **Web Scraping** | BeautifulSoup4, Requests |
 | **Frontend** | HTML5, Tailwind CSS (CDN), JavaScript, Chart.js |
 | **Database** | SQLite 3 (via SQLAlchemy ORM) |
@@ -493,7 +525,7 @@ Stage B: Fine-tune on real OGDC data (actual market data)
 
 Administrators can manually trigger retraining from the Settings page (`/settings`):
 - Click **"Retrain Now"** → `POST /api/admin/retrain`
-- The training script runs as a **daemon background thread** (dashboard stays responsive)
+- The training script is launched as a **detached OS process** via `subprocess.Popen(start_new_session=True)` — this decouples the training PID from Flask's process group, so restarting the web server will not kill an ongoing training run or leave zombie processes in memory
 - Progress logged to `system.log`, viewable in real-time at `/admin/logs`
 - New weights saved to `models/saved_models/lstm_model_calibrated.h5`
 
@@ -508,6 +540,27 @@ The training script (`gan_lstm_augmented_training.py`) includes:
 
 ## 🔐 Security
 
+### Environment Variables (`.env`)
+
+All secrets are loaded at runtime from a `.env` file that is **never committed to Git** (already listed in `.gitignore`). Copy the template to get started:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | What It Does | How to Set |
+|---|---|---|
+| `FLASK_SECRET_KEY` | Signs and encrypts Flask session cookies. Without this, any attacker can forge session data and impersonate any user — including admins. **Must be a long, random, unique string.** | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `DEBUG` | When `True`, Flask enables its interactive debugger and auto-reloader. **Set to `False` in any live/demo deployment** — the debugger exposes a Python console that can execute arbitrary code on your server. | `True` (dev) / `False` (prod) |
+
+> **How it works under the hood:** `app.py` calls `load_dotenv()` (from `python-dotenv`) before Flask initialises. The values land in `os.environ`. The secret key resolution follows this priority chain:
+> 1. `.env` file (recommended)
+> 2. System environment variable `FLASK_SECRET_KEY`
+> 3. `.flask_secret` file (backward-compatible fallback)
+> 4. Auto-generated random key (first run only)
+
+### Secrets Table
+
 | Concern | Mitigation |
 |---|---|
 | **Password Storage** | Werkzeug `generate_password_hash` / `check_password_hash` (PBKDF2-SHA256) |
@@ -516,6 +569,8 @@ The training script (`gan_lstm_augmented_training.py`) includes:
 | **Log Safety** | `system.log` verified free of sensitive data (no API keys, no passwords) |
 | **Git Hygiene** | `.gitignore` excludes: `.flask_secret`, `*.log`, `venv/`, `__pycache__/`, `*.db` |
 | **DB Migration** | `ALTER TABLE` migration safely adds `is_admin` column to existing databases without data loss |
+| **Subprocess Safety** | Retrain uses `Popen(start_new_session=True)` — training process is OS-detached; Flask restarts cannot create zombie leaks |
+| **Timestamp Integrity** | yfinance fallback timestamps are localized UTC→PKT before DB write — prevents look-ahead contamination of model inputs |
 
 ---
 
@@ -534,10 +589,13 @@ The training script (`gan_lstm_augmented_training.py`) includes:
 > The **weighted ensemble** (LSTM 63% + XGBoost 37%) achieves 92.8% accuracy compared to LSTM alone (54.9%) or XGBoost alone (40.6%). The models are complementary — LSTM captures temporal momentum while XGBoost captures feature-driven signals.
 
 **"How do you measure risk, not just direction?"**
-> The **Sharpe Ratio (Risk IQ)** card shows the risk-adjusted return — calculated from 90-day rolling returns, a 5% annualized risk-free rate, and annualized volatility. A Sharpe > 1.0 (green) indicates favorable risk-adjusted performance.
+> The **Sharpe Ratio (Risk IQ)** card shows the risk-adjusted return — calculated using **logarithmic returns** (`np.log(Close/Close.shift(1))`), a 90-day rolling window, a 5% annualized risk-free rate, and √252 annualization. Logarithmic returns are symmetric and provide a more accurate risk profile for high-volatility PSX tickers like OGDC compared to simple arithmetic returns.
 
 **"What if PSX is down during the demo?"**
-> The data pipeline has a **Yahoo Finance fallback**. Additionally, a recorded video walkthrough serves as proof of the working system.
+> The data pipeline has a **Yahoo Finance fallback**. All incoming Yahoo Finance timestamps are automatically localized from UTC to **Asia/Karachi (PKT)** before storage, ensuring data alignment with PSX records and eliminating look-ahead bias. Additionally, a recorded video walkthrough serves as proof of the working system.
+
+**"Why does the GAN Confidence Interval load so fast on repeat visits?"**
+> A **15-minute memoization cache** (`_gan_cache`) stores the result of the 50-pass Monte Carlo simulation. Subsequent `/api/metrics` calls within the TTL window serve the cached result instantly, reducing response time from seconds to milliseconds.
 
 ---
 
@@ -569,7 +627,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ---
 
-## 👨‍💻 Authorw
+## 👨‍💻 Authors
 
 **Muhammad Abdullah**
 - GitHub: [@Surfing-Cipher](https://github.com/Surfing-Cipher)
