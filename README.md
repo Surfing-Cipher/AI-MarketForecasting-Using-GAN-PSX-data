@@ -6,7 +6,7 @@
 ![Flask](https://img.shields.io/badge/Flask-3.0-lightgrey.svg)
 ![XGBoost](https://img.shields.io/badge/XGBoost-2.0-blue.svg)
 ![SHAP](https://img.shields.io/badge/SHAP-Explainable_AI-purple.svg)
-![pytz](https://img.shields.io/badge/pytz-PSX_Timezone_Sync-teal.svg)
+![pytz](https://img.shields.io/badge/pytz-2026.1.post1-teal.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Phase](https://img.shields.io/badge/Phase-5_Production_%26_Scalability-gold.svg)
 
@@ -175,12 +175,13 @@ venv\Scripts\activate      # Windows
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure environment variables  ← NEW
-#    Copy the template and edit your own secret key:
+# 4. Configure environment variables
+#    Approach 1: You can manually create a .env file and paste the generated output into it,
+#    or alternatively redirect the generation command output into .env so the secret is saved:
+python -c "import secrets; print('FLASK_SECRET_KEY=' + secrets.token_hex(32))" > .env
+
+#    Approach 2: Another valid approach is to copy the existing template file and edit your key:
 cp .env.example .env
-#    Or generate a cryptographically secure key directly:
-python -c "import secrets; print('FLASK_SECRET_KEY=' + secrets.token_hex(32))"
-#    Paste the output into .env
 
 # 5. Initialize the database
 python src/db_manager.py

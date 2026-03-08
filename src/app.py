@@ -14,6 +14,7 @@ import os
 import logging
 import secrets
 import time
+from functools import wraps
 
 # --- Load .env file first, before anything else reads os.environ ---
 # Looks for .env in the project root (one level above /src/)
@@ -38,6 +39,7 @@ if os.environ.get('FLASK_SECRET_KEY'):
 elif os.path.exists(_secret_path):
     with open(_secret_path, 'r') as f:
         app.secret_key = f.read().strip()
+    logger.info('Flask secret key loaded from .flask_secret file fallback.')
 else:
     _generated = secrets.token_hex(32)
     with open(_secret_path, 'w') as f:
@@ -63,7 +65,6 @@ _gan_cache = {"result": None, "ts": 0.0}
 # ==========================================
 def login_required(f):
     """Decorator to protect routes that require authentication."""
-    from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
@@ -74,7 +75,6 @@ def login_required(f):
 
 def admin_required(f):
     """Decorator to protect routes that require admin privileges."""
-    from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
