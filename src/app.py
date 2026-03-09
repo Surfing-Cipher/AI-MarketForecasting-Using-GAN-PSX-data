@@ -77,9 +77,18 @@ def admin_required(f):
     """Decorator to protect routes that require admin privileges."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if 'user_id' not in session:
+        user_id = session.get('user_id')
+        if not user_id:
             return jsonify({"error": "Authentication required"}), 401
-        if not session.get('is_admin'):
+        
+        # Fresh check against the database to prevent session lag
+        import sqlite3
+        from db_manager import DB_NAME
+        conn = sqlite3.connect(DB_NAME)
+        user = conn.execute('SELECT is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+
+        if not user or not user[0]:
             return jsonify({"error": "Admin privileges required"}), 403
         return f(*args, **kwargs)
     return decorated
@@ -139,7 +148,7 @@ def register():
 
 
 @app.route('/api/login', methods=['POST'])
-def login():
+def api_login():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body required"}), 400
@@ -160,6 +169,7 @@ def login():
     return jsonify({"message": "Login successful", "user": user}), 200
 
 
+
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.clear()
@@ -169,9 +179,19 @@ def logout():
 @app.route('/api/session')
 def get_session():
     if 'user_id' in session:
+        user_id = session['user_id']
+        
+        # Verify admin dynamically from database as requested
+        import sqlite3
+        from db_manager import DB_NAME
+        conn = sqlite3.connect(DB_NAME)
+        user = conn.execute('SELECT is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+        is_admin = bool(user and user[0])
+
         return jsonify({
             "authenticated": True,
-            "user": {"id": session['user_id'], "username": session['username']}
+            "user": {"id": user_id, "username": session['username'], "is_admin": is_admin}
         }), 200
     return jsonify({"authenticated": False}), 401
 

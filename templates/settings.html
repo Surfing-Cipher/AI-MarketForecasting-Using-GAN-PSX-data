@@ -43,6 +43,10 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200 font-sans h-screen w-screen flex overflow-hidden">
@@ -63,22 +67,28 @@
                     <i class="ri-briefcase-4-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Portfolio</span>
                 </a>
+                <a href="/gan-model" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                    <i class="ri-brain-line text-xl"></i>
+                    <span class="hidden lg:block font-medium">GAN Model</span>
+                </a>
                 <a href="/settings" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
                     <i class="ri-settings-3-line text-xl"></i>
                     <span class="hidden lg:block font-medium">Settings</span>
                 </a>
-                <a href="/admin/logs" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
+                <!-- Admin-only link (hidden until session confirms admin) -->
+                <a href="/admin/logs" id="adminLogsLink" class="hidden flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-terminal-box-line text-xl"></i>
                     <span class="hidden lg:block font-medium">System Logs</span>
                 </a>
             </nav>
         </div>
+        <!-- User Profile (Bottom) — dynamically updated by JS -->
         <div class="p-4 border-t border-slate-800/50">
-            <div class="flex items-center justify-center lg:justify-start gap-3">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">A</div>
+            <div id="sidebarUser" class="flex items-center justify-center lg:justify-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">?</div>
                 <div class="hidden lg:block">
-                    <p class="text-sm font-semibold text-white">Admin</p>
-                    <p class="text-xs text-slate-500">Pro Access</p>
+                    <p class="text-sm font-semibold text-white">Guest</p>
+                    <p class="text-xs text-slate-500">Not logged in</p>
                 </div>
             </div>
         </div>
@@ -99,6 +109,21 @@
                     <span class="text-xs font-mono text-neon-green tracking-wide">SYSTEM OPERATIONAL</span>
                 </div>
                 <div class="text-slate-400 text-sm font-mono" id="clock">--:--:--</div>
+                <!-- Auth Buttons -->
+                <div id="authButtons">
+                    <button onclick="showAuthModal('login')" class="text-xs px-4 py-2 rounded-lg bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 hover:bg-neon-cyan/20 transition font-medium">
+                        <i class="ri-login-box-line mr-1"></i> Login
+                    </button>
+                    <button onclick="showAuthModal('register')" class="text-xs px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition font-medium ml-2">
+                        <i class="ri-user-add-line mr-1"></i> Register
+                    </button>
+                </div>
+                <div id="userInfo" class="hidden flex items-center gap-3">
+                    <span class="text-sm font-mono text-neon-green" id="usernameDisplay"></span>
+                    <button onclick="handleLogout()" class="text-xs px-3 py-1 rounded bg-slate-800 text-slate-400 hover:text-neon-red hover:bg-slate-700 transition">
+                        <i class="ri-logout-box-r-line"></i> Logout
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -122,14 +147,14 @@
                     <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-800">
                         <div>
                             <p class="text-sm font-medium text-white">Active LSTM Model</p>
-                            <p class="text-xs text-slate-500 font-mono mt-1" id="modelPath">Checking...</p>
+                            <p class="text-xs text-slate-500 font-mono mt-1" id="modelPath">lstm_model_calibrated.h5</p>
                         </div>
-                        <span class="px-3 py-1.5 rounded-lg bg-neon-green/10 border border-neon-green/30 text-neon-green text-xs font-mono" id="modelBadge">
+                        <span class="px-3 py-1.5 rounded-lg bg-neon-green/10 border border-neon-green/30 text-neon-green text-xs font-mono">
                             <i class="ri-checkbox-circle-fill mr-1"></i> CALIBRATED
                         </span>
                     </div>
 
-                    <!-- Last Modified -->
+                    <!-- Ensemble Accuracy -->
                     <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-800">
                         <div>
                             <p class="text-sm font-medium text-white">Ensemble Accuracy</p>
@@ -138,8 +163,8 @@
                         <span class="text-2xl font-bold font-mono text-neon-cyan" id="ensembleAccuracy">--</span>
                     </div>
 
-                    <!-- Retrain Button -->
-                    <div class="p-4 bg-slate-900/50 rounded-xl border border-neon-red/20">
+                    <!-- Retrain Button (admin-only, shown/hidden by JS) -->
+                    <div id="retrainSection" class="hidden p-4 bg-slate-900/50 rounded-xl border border-neon-red/20">
                         <div class="flex items-start justify-between">
                             <div>
                                 <p class="text-sm font-medium text-white flex items-center gap-2">
@@ -148,7 +173,6 @@
                                 </p>
                                 <p class="text-xs text-slate-500 mt-1 max-w-md">
                                     Triggers the GAN→LSTM augmented training pipeline in the background.
-                                    This re-generates synthetic data and fine-tunes the LSTM on real OGDC prices.
                                     <strong class="text-slate-400">Takes 5–15 minutes on GPU.</strong>
                                 </p>
                             </div>
@@ -199,8 +223,8 @@
                 </div>
             </div>
 
-            <!-- Quick Links -->
-            <div class="glass-panel rounded-2xl p-8">
+            <!-- Quick Links (admin-only, shown/hidden by JS) -->
+            <div id="adminQuickLinks" class="hidden glass-panel rounded-2xl p-8">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 rounded-xl bg-neon-green/20 flex items-center justify-center">
                         <i class="ri-links-line text-xl text-neon-green"></i>
@@ -232,31 +256,225 @@
         </div>
     </main>
 
+    <!-- Auth Modal -->
+    <div id="authModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop">
+        <div class="glass-panel rounded-2xl p-8 w-full max-w-md mx-4 border border-slate-700/50 relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
+                <i class="ri-close-line text-xl"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <i class="ri-radar-fill text-3xl text-neon-purple mb-2 block"></i>
+                <h3 id="authTitle" class="text-xl font-bold text-white">Login</h3>
+            </div>
+
+            <div id="authError" class="hidden mb-4 p-3 rounded-lg bg-neon-red/10 border border-neon-red/20 text-neon-red text-sm text-center"></div>
+
+            <form onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Username</label>
+                    <input type="text" id="authUsername" required
+                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                </div>
+
+                <div id="emailField" class="hidden">
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Email</label>
+                    <input type="email" id="authEmail"
+                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Password</label>
+                    <input type="password" id="authPassword" required minlength="6"
+                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                </div>
+
+                <button type="submit" id="authSubmitBtn"
+                    class="w-full py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-cyan text-white font-bold hover:opacity-90 transition">
+                    Login
+                </button>
+            </form>
+
+            <p class="text-center text-sm text-slate-500 mt-4">
+                <span id="authSwitch"></span>
+            </p>
+        </div>
+    </div>
+
     <script>
-        // Clock
+        // ==========================================
+        // CLOCK
+        // ==========================================
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString();
         }, 1000);
 
-        // Load backtest accuracy
+        // ==========================================
+        // STATE
+        // ==========================================
+        let currentAuthMode = 'login';
+        let isAuthenticated = false;
+
+        // ==========================================
+        // AUTH MODAL
+        // ==========================================
+        function showAuthModal(mode) {
+            currentAuthMode = mode;
+            document.getElementById('authModal').classList.remove('hidden');
+            document.getElementById('authError').classList.add('hidden');
+            document.getElementById('authUsername').value = '';
+            document.getElementById('authPassword').value = '';
+
+            if (mode === 'register') {
+                document.getElementById('authTitle').innerText = 'Create Account';
+                document.getElementById('emailField').classList.remove('hidden');
+                document.getElementById('authEmail').required = true;
+                document.getElementById('authSubmitBtn').innerText = 'Register';
+                document.getElementById('authSwitch').innerHTML =
+                    'Already have an account? <a href="#" onclick="showAuthModal(\'login\')" class="text-neon-cyan hover:underline">Login</a>';
+            } else {
+                document.getElementById('authTitle').innerText = 'Login';
+                document.getElementById('emailField').classList.add('hidden');
+                document.getElementById('authEmail').required = false;
+                document.getElementById('authSubmitBtn').innerText = 'Login';
+                document.getElementById('authSwitch').innerHTML =
+                    'Don\'t have an account? <a href="#" onclick="showAuthModal(\'register\')" class="text-neon-cyan hover:underline">Register</a>';
+            }
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('authError');
+            errorEl.classList.add('hidden');
+
+            const body = {
+                username: document.getElementById('authUsername').value.trim(),
+                password: document.getElementById('authPassword').value,
+            };
+
+            let url = '/api/login';
+            if (currentAuthMode === 'register') {
+                body.email = document.getElementById('authEmail').value.trim();
+                url = '/api/register';
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    errorEl.innerText = data.error || 'An error occurred';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                closeAuthModal();
+                checkSession();
+            } catch (err) {
+                errorEl.innerText = 'Network error. Please try again.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        async function handleLogout() {
+            await fetch('/api/logout', { method: 'POST' });
+            checkSession();
+        }
+
+        // ==========================================
+        // SESSION CHECK
+        // ==========================================
+        async function checkSession() {
+            try {
+                const res = await fetch('/api/session');
+                const data = await res.json();
+
+                if (data.authenticated) {
+                    isAuthenticated = true;
+                    document.getElementById('authButtons').classList.add('hidden');
+                    document.getElementById('userInfo').classList.remove('hidden');
+                    document.getElementById('usernameDisplay').innerText = data.user.username;
+
+                    // Update sidebar
+                    document.getElementById('sidebarUser').innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">
+                            ${data.user.username[0].toUpperCase()}
+                        </div>
+                        <div class="hidden lg:block">
+                            <p class="text-sm font-semibold text-white">${data.user.username}</p>
+                            <p class="text-xs text-neon-green">Authenticated</p>
+                        </div>
+                    `;
+
+                    // Check admin status dynamically from the payload
+                    if (data.user.is_admin) {
+                        document.getElementById('adminLogsLink').classList.remove('hidden');
+                        document.getElementById('retrainSection').classList.remove('hidden');
+                        document.getElementById('adminQuickLinks').classList.remove('hidden');
+                        
+                        // Update sidebar specifically for admin
+                        document.getElementById('sidebarUser').innerHTML = `
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-purple to-neon-cyan flex items-center justify-center font-bold text-xs text-white shadow-[0_0_15px_-3px_rgba(139,92,246,0.6)]">
+                                <i class="ri-vip-crown-fill text-[10px]"></i>
+                            </div>
+                            <div class="hidden lg:block">
+                                <p class="text-sm font-semibold text-white tracking-wide">${data.user.username}</p>
+                                <p class="text-xs text-neon-purple font-mono neon-text">ADMINISTRATOR</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    isAuthenticated = false;
+                    document.getElementById('authButtons').classList.remove('hidden');
+                    document.getElementById('userInfo').classList.add('hidden');
+
+                    // Hide admin sections
+                    document.getElementById('adminLogsLink').classList.add('hidden');
+                    document.getElementById('retrainSection').classList.add('hidden');
+                    document.getElementById('adminQuickLinks').classList.add('hidden');
+
+                    document.getElementById('sidebarUser').innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">?</div>
+                        <div class="hidden lg:block">
+                            <p class="text-sm font-semibold text-white">Guest</p>
+                            <p class="text-xs text-slate-500">Not logged in</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Session check failed:', err);
+            }
+        }
+
+        // ==========================================
+        // BACKTEST ACCURACY
+        // ==========================================
         async function loadAccuracy() {
             try {
                 const res = await fetch('/api/backtest');
                 const data = await res.json();
-                if (data.ensemble_accuracy) {
+                if (data.ensemble && data.ensemble.accuracy !== undefined) {
+                    document.getElementById('ensembleAccuracy').textContent = `~${data.ensemble.accuracy}%`;
+                } else if (data.ensemble_accuracy) {
                     document.getElementById('ensembleAccuracy').textContent =
                         `${(data.ensemble_accuracy * 100).toFixed(1)}%`;
-                } else if (data.accuracy) {
-                    document.getElementById('ensembleAccuracy').textContent =
-                        `${(data.accuracy.ensemble * 100).toFixed(1)}%`;
                 }
             } catch (e) {
                 document.getElementById('ensembleAccuracy').textContent = 'N/A';
             }
         }
-        loadAccuracy();
 
-        // Trigger retrain
+        // ==========================================
+        // RETRAIN
+        // ==========================================
         async function triggerRetrain() {
             const btn = document.getElementById('retrainBtn');
             const status = document.getElementById('retrainStatus');
@@ -264,7 +482,6 @@
 
             btn.disabled = true;
             btn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> Starting...';
-            btn.className = btn.className.replace('hover:bg-neon-red/20', '');
 
             try {
                 const res = await fetch('/api/admin/retrain', { method: 'POST' });
@@ -287,6 +504,12 @@
                 btn.innerHTML = '<i class="ri-error-warning-line mr-1"></i> Error';
             }
         }
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        checkSession();
+        loadAccuracy();
     </script>
 </body>
 </html>
