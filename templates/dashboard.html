@@ -465,7 +465,7 @@
         // 1. Digital Clock (Updates every second for 'Live' feel)
         setInterval(() => {
             const now = new Date();
-            const clockEl = document.getElementById('live-clock') || document.getElementById('clock');
+            const clockEl = document.getElementById('clock');
             if (clockEl) clockEl.innerText = now.toLocaleTimeString();
         }, 1000);
 
@@ -1003,16 +1003,29 @@
                     document.getElementById('userInfo').classList.remove('hidden');
                     document.getElementById('usernameDisplay').innerText = data.user.username;
 
-                    // Update sidebar
-                    document.getElementById('sidebarUser').innerHTML = `
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">
-                            ${data.user.username[0].toUpperCase()}
-                        </div>
-                        <div class="hidden lg:block">
-                            <p class="text-sm font-semibold text-white">${data.user.username}</p>
-                            <p class="text-xs text-neon-green">Authenticated</p>
-                        </div>
-                    `;
+                    // Update sidebar — build DOM nodes to avoid XSS via innerHTML
+                    const sidebarUser = document.getElementById('sidebarUser');
+                    sidebarUser.innerHTML = '';
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black';
+                    avatar.textContent = data.user.username.charAt(0).toUpperCase();
+
+                    const infoWrap = document.createElement('div');
+                    infoWrap.className = 'hidden lg:block';
+
+                    const nameEl = document.createElement('p');
+                    nameEl.className = 'text-sm font-semibold text-white';
+                    nameEl.textContent = data.user.username;
+
+                    const statusEl = document.createElement('p');
+                    statusEl.className = 'text-xs text-neon-green';
+                    statusEl.textContent = 'Authenticated';
+
+                    infoWrap.appendChild(nameEl);
+                    infoWrap.appendChild(statusEl);
+                    sidebarUser.appendChild(avatar);
+                    sidebarUser.appendChild(infoWrap);
                 } else {
                     isAuthenticated = false;
                     document.getElementById('authButtons').classList.remove('hidden');

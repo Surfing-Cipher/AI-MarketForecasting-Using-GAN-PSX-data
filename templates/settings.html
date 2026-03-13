@@ -385,8 +385,18 @@
         }
 
         async function handleLogout() {
-            await fetch('/api/logout', { method: 'POST' });
-            checkSession();
+            try {
+                const res = await fetch('/api/logout', { method: 'POST' });
+                if (!res.ok) {
+                    console.error('Logout failed: server returned', res.status);
+                    alert('Logout failed. Please try again.');
+                    return;
+                }
+                checkSession();
+            } catch (err) {
+                console.error('Logout network error:', err);
+                alert('Logout failed due to a network error. Please try again.');
+            }
         }
 
         // ==========================================
@@ -403,33 +413,58 @@
                     document.getElementById('userInfo').classList.remove('hidden');
                     document.getElementById('usernameDisplay').innerText = data.user.username;
 
-                    // Update sidebar
-                    document.getElementById('sidebarUser').innerHTML = `
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">
-                            ${data.user.username[0].toUpperCase()}
-                        </div>
-                        <div class="hidden lg:block">
-                            <p class="text-sm font-semibold text-white">${data.user.username}</p>
-                            <p class="text-xs text-neon-green">Authenticated</p>
-                        </div>
-                    `;
+                    // Update sidebar — build DOM nodes to avoid XSS via innerHTML
+                    const sidebarUser = document.getElementById('sidebarUser');
+                    sidebarUser.innerHTML = '';
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black';
+                    avatar.textContent = data.user.username.charAt(0).toUpperCase();
+
+                    const infoWrap = document.createElement('div');
+                    infoWrap.className = 'hidden lg:block';
+
+                    const nameEl = document.createElement('p');
+                    nameEl.className = 'text-sm font-semibold text-white';
+                    nameEl.textContent = data.user.username;
+
+                    const statusEl = document.createElement('p');
+                    statusEl.className = 'text-xs text-neon-green';
+                    statusEl.textContent = 'Authenticated';
+
+                    infoWrap.appendChild(nameEl);
+                    infoWrap.appendChild(statusEl);
+                    sidebarUser.appendChild(avatar);
+                    sidebarUser.appendChild(infoWrap);
 
                     // Check admin status dynamically from the payload
                     if (data.user.is_admin) {
                         document.getElementById('adminLogsLink').classList.remove('hidden');
                         document.getElementById('retrainSection').classList.remove('hidden');
                         document.getElementById('adminQuickLinks').classList.remove('hidden');
-                        
-                        // Update sidebar specifically for admin
-                        document.getElementById('sidebarUser').innerHTML = `
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-purple to-neon-cyan flex items-center justify-center font-bold text-xs text-white shadow-[0_0_15px_-3px_rgba(139,92,246,0.6)]">
-                                <i class="ri-vip-crown-fill text-[10px]"></i>
-                            </div>
-                            <div class="hidden lg:block">
-                                <p class="text-sm font-semibold text-white tracking-wide">${data.user.username}</p>
-                                <p class="text-xs text-neon-purple font-mono neon-text">ADMINISTRATOR</p>
-                            </div>
-                        `;
+
+                        // Update sidebar for admin — static markup only, username via textContent
+                        sidebarUser.innerHTML = '';
+
+                        const adminAvatar = document.createElement('div');
+                        adminAvatar.className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-neon-purple to-neon-cyan flex items-center justify-center font-bold text-xs text-white shadow-[0_0_15px_-3px_rgba(139,92,246,0.6)]';
+                        adminAvatar.innerHTML = '<i class="ri-vip-crown-fill text-[10px]"></i>';
+
+                        const adminInfoWrap = document.createElement('div');
+                        adminInfoWrap.className = 'hidden lg:block';
+
+                        const adminNameEl = document.createElement('p');
+                        adminNameEl.className = 'text-sm font-semibold text-white tracking-wide';
+                        adminNameEl.textContent = data.user.username;
+
+                        const adminRoleEl = document.createElement('p');
+                        adminRoleEl.className = 'text-xs text-neon-purple font-mono neon-text';
+                        adminRoleEl.textContent = 'ADMINISTRATOR';
+
+                        adminInfoWrap.appendChild(adminNameEl);
+                        adminInfoWrap.appendChild(adminRoleEl);
+                        sidebarUser.appendChild(adminAvatar);
+                        sidebarUser.appendChild(adminInfoWrap);
                     }
                 } else {
                     isAuthenticated = false;

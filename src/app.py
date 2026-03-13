@@ -3,10 +3,12 @@ from data_pipeline import PSXDataPipeline
 from models_engine import GANGenerator, LSTMForecaster, XGBoostForecaster
 from db_manager import (
     init_db, create_user, verify_user,
-    add_to_watchlist, remove_from_watchlist, get_watchlist
+    add_to_watchlist, remove_from_watchlist, get_watchlist,
+    DB_NAME,
 )
 from sentiment_engine import get_live_sentiment
 from dotenv import load_dotenv
+import sqlite3
 import numpy as np
 import pandas as pd
 import json
@@ -63,6 +65,13 @@ _gan_cache = {"result": None, "ts": 0.0}
 # ==========================================
 # AUTH HELPER
 # ==========================================
+def _get_user_admin_status(user_id: int) -> bool:
+    """Return True if the given user has is_admin set in the database."""
+    with sqlite3.connect(DB_NAME) as conn:
+        row = conn.execute('SELECT is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
+    return bool(row and row[0])
+
+
 def login_required(f):
     """Decorator to protect routes that require authentication."""
     @wraps(f)
@@ -80,15 +89,8 @@ def admin_required(f):
         user_id = session.get('user_id')
         if not user_id:
             return jsonify({"error": "Authentication required"}), 401
-        
-        # Fresh check against the database to prevent session lag
-        import sqlite3
-        from db_manager import DB_NAME
-        conn = sqlite3.connect(DB_NAME)
-        user = conn.execute('SELECT is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
-        conn.close()
 
-        if not user or not user[0]:
+        if not _get_user_admin_status(user_id):
             return jsonify({"error": "Admin privileges required"}), 403
         return f(*args, **kwargs)
     return decorated
@@ -182,12 +184,7 @@ def get_session():
         user_id = session['user_id']
         
         # Verify admin dynamically from database as requested
-        import sqlite3
-        from db_manager import DB_NAME
-        conn = sqlite3.connect(DB_NAME)
-        user = conn.execute('SELECT is_admin FROM users WHERE id = ?', (user_id,)).fetchone()
-        conn.close()
-        is_admin = bool(user and user[0])
+        is_admin = _get_user_admin_status(user_id)
 
         return jsonify({
             "authenticated": True,
