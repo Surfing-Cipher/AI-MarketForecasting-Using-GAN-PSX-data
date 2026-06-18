@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import os
 import logging
-import joblib
-import xgboost as xgb
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, LeakyReLU, BatchNormalization, Input, Bidirectional, Dropout
+import xgboost as xgb
+import joblib
 from sklearn.preprocessing import MinMaxScaler
 from db_manager import fetch_data
 

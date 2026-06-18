@@ -563,6 +563,7 @@
         let myChart = null;
 
         function updateChart(data) {
+            const chartData = data.chart_data || data;
             const ctx = document.getElementById('mainChart').getContext('2d');
 
             // Modern Dark Theme Chart Config
@@ -579,11 +580,11 @@
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: data.chart_data.dates,
+                    labels: chartData.dates,
                     datasets: [
                         {
                             label: 'Close Price',
-                            data: data.chart_data.close,
+                            data: chartData.close,
                             borderColor: '#06b6d4', // Neon Cyan
                             backgroundColor: gradient,
                             borderWidth: 2,
@@ -594,7 +595,7 @@
                         },
                         {
                             label: 'Bollinger Upper',
-                            data: data.chart_data.bb_upper,
+                            data: chartData.bb_upper,
                             borderColor: '#f43f5e', // Neon Red Full Opacity
                             borderDash: [5, 5],
                             borderWidth: 2,
@@ -603,7 +604,7 @@
                         },
                         {
                             label: 'Bollinger Lower',
-                            data: data.chart_data.bb_lower,
+                            data: chartData.bb_lower,
                             borderColor: '#10b981', // Neon Green Full Opacity
                             borderDash: [5, 5],
                             borderWidth: 2,
