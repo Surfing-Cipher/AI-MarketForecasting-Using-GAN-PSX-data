@@ -7,6 +7,7 @@
     <title>Portfolio | NEXUS AI</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -26,44 +27,93 @@
                     },
                     animation: {
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.3s ease forwards',
                     }
                 }
             }
         }
     </script>
+
     <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
         .glass-panel {
             background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
         }
-
+        .glass-dark {
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
         body {
             background-color: #020617;
             background-image:
                 radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
         }
-
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        .modal-backdrop {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-        }
+        .modal-backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); }
 
         .ticker-card {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            cursor: pointer;
+            animation: fadeIn 0.4s ease forwards;
         }
         .ticker-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 0 30px -5px rgba(6,182,212,0.25), 0 0 0 1px rgba(6,182,212,0.15);
+            border-color: rgba(6,182,212,0.3) !important;
         }
+        .ticker-card-other:hover {
+            box-shadow: 0 0 20px -5px rgba(139,92,246,0.2);
+            border-color: rgba(139,92,246,0.2) !important;
+        }
+
+        .detail-modal { animation: slideUp 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+        .stat-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 8px; border-radius: 6px;
+            font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+        }
+        .sparkline-container { position: relative; height: 48px; }
+
+        .pred-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px; padding: 14px;
+            transition: all 0.2s;
+        }
+        .pred-card:hover { background: rgba(255,255,255,0.06); }
+
+        .rsi-bar-track {
+            height: 6px; border-radius: 3px;
+            background: linear-gradient(to right, #f43f5e 0%, #f59e0b 30%, #10b981 60%, #f43f5e 100%);
+            position: relative; overflow: visible;
+        }
+        .rsi-bar-thumb {
+            position: absolute; top: 50%; transform: translate(-50%,-50%);
+            width: 12px; height: 12px; border-radius: 50%;
+            background: white; border: 2px solid #020617;
+            box-shadow: 0 0 8px rgba(255,255,255,0.5);
+        }
+
+        .shim { animation: shimmer 1.5s infinite; background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%); background-size: 200% 100%; border-radius: 6px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* GAN CI bar */
+        .ci-bar { height: 10px; border-radius: 5px; background: linear-gradient(to right, rgba(139,92,246,0.3), rgba(139,92,246,0.8), rgba(139,92,246,0.3)); position: relative; }
+        .ci-mean-line { position: absolute; top: -3px; width: 3px; height: 16px; background: #8b5cf6; border-radius: 2px; transform: translateX(-50%); box-shadow: 0 0 6px rgba(139,92,246,0.8); }
     </style>
 </head>
 
@@ -76,7 +126,6 @@
                 <i class="ri-radar-fill text-2xl text-neon-cyan animate-pulse-slow"></i>
                 <span class="hidden lg:block ml-3 font-bold text-lg tracking-wider text-white">NEXUS<span class="text-neon-cyan">AI</span></span>
             </div>
-
             <nav class="mt-8 flex flex-col gap-2 px-2 lg:px-4">
                 <a href="/" class="flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors">
                     <i class="ri-dashboard-3-line text-xl"></i>
@@ -96,8 +145,6 @@
                 </a>
             </nav>
         </div>
-
-        <!-- User Profile (Bottom) -->
         <div class="p-4 border-t border-slate-800/50">
             <div id="sidebarUser" class="flex items-center justify-center lg:justify-start gap-3">
                 <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">?</div>
@@ -119,9 +166,7 @@
                     Portfolio & Watchlist</h2>
                 <span class="px-2 py-1 rounded bg-slate-800 text-neon-cyan text-xs font-mono border border-neon-cyan/20">FYP-2</span>
             </div>
-
             <div class="flex items-center gap-4">
-                <!-- Auth Buttons -->
                 <div id="authButtons">
                     <button onclick="showAuthModal('login')" class="text-xs px-4 py-2 rounded-lg bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 hover:bg-neon-cyan/20 transition font-medium">
                         <i class="ri-login-box-line mr-1"></i> Login
@@ -155,26 +200,64 @@
                 </div>
             </div>
 
-            <!-- Watchlist Section (shown when authenticated) -->
+            <!-- Watchlist Section -->
             <div id="watchlistSection" class="hidden space-y-6">
+
                 <!-- Add Ticker Form -->
                 <div class="glass-panel p-6 rounded-2xl border-l-4 border-neon-green">
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 flex-wrap">
                         <div class="p-3 bg-neon-green/10 rounded-lg">
                             <i class="ri-add-circle-line text-2xl text-neon-green"></i>
                         </div>
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <h3 class="text-lg font-bold text-white">Track a Stock</h3>
-                            <p class="text-slate-400 text-xs mt-1">Add a PSX ticker symbol to your personal watchlist.</p>
+                            <p class="text-slate-400 text-xs mt-1">Add a PSX ticker symbol to your personal watchlist. <span class="text-neon-cyan font-mono">OGDC</span> shows full AI analytics.</p>
                         </div>
                         <form onsubmit="handleAddTicker(event)" class="flex items-center gap-3">
                             <input type="text" id="tickerInput" placeholder="e.g. OGDC"
-                                class="bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-2 text-white text-sm font-mono focus:outline-none focus:border-neon-cyan w-32 uppercase"
+                                class="bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-2 text-white text-sm font-mono focus:outline-none focus:border-neon-cyan w-36 uppercase"
                                 required>
                             <button type="submit" class="px-4 py-2 rounded-lg bg-neon-green text-slate-950 font-bold text-sm hover:bg-green-400 transition">
                                 <i class="ri-add-line mr-1"></i> Add
                             </button>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Live Metrics Summary Bar (OGDC) -->
+                <div id="metricsBar" class="hidden glass-panel p-5 rounded-2xl border border-neon-cyan/15">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
+                            <span class="text-xs font-mono text-slate-400 uppercase tracking-widest">Live Data · OGDC Pipeline</span>
+                        </div>
+                        <span id="metricsTimestamp" class="text-xs text-slate-600 font-mono"></span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Price (PKR)</p>
+                            <p id="mbPrice" class="text-xl font-bold font-mono text-white">—</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">1-Day Change</p>
+                            <p id="mbChange" class="text-lg font-bold font-mono text-slate-400">—</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">RSI</p>
+                            <p id="mbRsi" class="text-lg font-bold font-mono text-slate-400">—</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Volatility</p>
+                            <p id="mbVol" class="text-lg font-bold font-mono text-slate-400">—</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Sharpe Ratio</p>
+                            <p id="mbSharpe" class="text-lg font-bold font-mono text-slate-400">—</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Sentiment</p>
+                            <p id="mbSentiment" class="text-lg font-bold font-mono text-slate-400">—</p>
+                        </div>
                     </div>
                 </div>
 
@@ -184,10 +267,11 @@
                         <i class="ri-star-line text-neon-cyan"></i>
                         Your Watchlist
                         <span id="watchlistCount" class="text-xs font-mono text-slate-500 ml-2">(0 tickers)</span>
+                        <span id="metricsLoading" class="hidden ml-2">
+                            <i class="ri-loader-4-line animate-spin text-neon-cyan text-base"></i>
+                        </span>
                     </h3>
-                    <div id="watchlistGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <!-- Ticker cards will be injected here -->
-                    </div>
+                    <div id="watchlistGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                     <div id="emptyWatchlist" class="hidden glass-panel p-8 rounded-2xl text-center">
                         <i class="ri-inbox-line text-4xl text-slate-600 mb-3 block"></i>
                         <p class="text-slate-500">Your watchlist is empty. Add a ticker symbol above to get started.</p>
@@ -196,7 +280,7 @@
             </div>
         </div>
 
-        <!-- Toast Notification -->
+        <!-- Toast -->
         <div id="toast" class="fixed bottom-6 right-6 z-[200] hidden">
             <div class="glass-panel px-5 py-3 rounded-xl border border-neon-green/30 flex items-center gap-3 shadow-lg shadow-black/20">
                 <i id="toastIcon" class="ri-checkbox-circle-fill text-neon-green text-lg"></i>
@@ -205,51 +289,284 @@
         </div>
     </main>
 
-    <!-- Auth Modal -->
+    <!-- ============================================================ -->
+    <!-- AUTH MODAL                                                    -->
+    <!-- ============================================================ -->
     <div id="authModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop">
         <div class="glass-panel rounded-2xl p-8 w-full max-w-md mx-4 border border-slate-700/50 relative">
             <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
                 <i class="ri-close-line text-xl"></i>
             </button>
-
             <div class="text-center mb-6">
                 <i class="ri-radar-fill text-3xl text-neon-purple mb-2 block"></i>
                 <h3 id="authTitle" class="text-xl font-bold text-white">Login</h3>
             </div>
-
             <div id="authError" class="hidden mb-4 p-3 rounded-lg bg-neon-red/10 border border-neon-red/20 text-neon-red text-sm text-center"></div>
-
             <form onsubmit="handleAuth(event)" class="space-y-4">
                 <div>
                     <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Username</label>
-                    <input type="text" id="authUsername" required
-                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                    <input type="text" id="authUsername" required class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
                 </div>
-
                 <div id="emailField" class="hidden">
                     <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Email</label>
-                    <input type="email" id="authEmail"
-                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                    <input type="email" id="authEmail" class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
                 </div>
-
                 <div>
                     <label class="text-xs text-slate-400 uppercase tracking-wider font-bold">Password</label>
-                    <input type="password" id="authPassword" required minlength="6"
-                        class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
+                    <input type="password" id="authPassword" required minlength="6" class="w-full mt-1 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-purple">
                 </div>
-
-                <button type="submit" id="authSubmitBtn"
-                    class="w-full py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-cyan text-white font-bold hover:opacity-90 transition">
-                    Login
-                </button>
+                <button type="submit" id="authSubmitBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-cyan text-white font-bold hover:opacity-90 transition">Login</button>
             </form>
-
-            <p class="text-center text-sm text-slate-500 mt-4">
-                <span id="authSwitch"></span>
-            </p>
+            <p class="text-center text-sm text-slate-500 mt-4"><span id="authSwitch"></span></p>
         </div>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- TICKER DETAIL MODAL (Option B)                               -->
+    <!-- ============================================================ -->
+    <div id="detailModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center modal-backdrop p-4">
+        <div class="detail-modal glass-dark rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto relative border border-slate-700/40">
+
+            <!-- Modal Header -->
+            <div class="sticky top-0 z-10 glass-dark flex items-center justify-between px-7 py-5 border-b border-slate-800/60">
+                <div class="flex items-center gap-4">
+                    <div id="dmTickerIcon" class="w-11 h-11 rounded-xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
+                        <i class="ri-stock-line text-neon-cyan text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 id="dmTickerName" class="text-2xl font-bold font-mono text-white">OGDC</h2>
+                        <p class="text-xs text-slate-500">Oil & Gas Development Company · PSX Listed</p>
+                    </div>
+                    <div id="dmLiveBadge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-green/10 border border-neon-green/20">
+                        <div class="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse"></div>
+                        <span class="text-neon-green text-xs font-mono font-bold">LIVE DATA</span>
+                    </div>
+                </div>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white transition p-2 hover:bg-slate-800 rounded-lg">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-7 space-y-7">
+
+                <!-- Loading State -->
+                <div id="dmLoading" class="py-16 flex flex-col items-center gap-4">
+                    <i class="ri-loader-4-line animate-spin text-4xl text-neon-cyan"></i>
+                    <p class="text-slate-400 text-sm">Fetching AI analytics…</p>
+                </div>
+
+                <!-- Content (hidden until loaded) -->
+                <div id="dmContent" class="hidden space-y-7">
+
+                    <!-- Row 1: Quick Stats -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="glass-panel rounded-xl p-4">
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Current Price</p>
+                            <p id="dmPrice" class="text-2xl font-bold font-mono text-white">—</p>
+                            <p id="dmPriceChange" class="text-xs font-mono mt-1 text-slate-400">—</p>
+                        </div>
+                        <div class="glass-panel rounded-xl p-4">
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">RSI (14)</p>
+                            <p id="dmRsi" class="text-2xl font-bold font-mono text-white">—</p>
+                            <p id="dmRsiLabel" class="text-xs font-mono mt-1 text-slate-400">—</p>
+                        </div>
+                        <div class="glass-panel rounded-xl p-4">
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Sharpe Ratio</p>
+                            <p id="dmSharpe" class="text-2xl font-bold font-mono text-white">—</p>
+                            <p class="text-xs font-mono mt-1 text-slate-500">90-day log returns</p>
+                        </div>
+                        <div class="glass-panel rounded-xl p-4">
+                            <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Volatility</p>
+                            <p id="dmVol" class="text-2xl font-bold font-mono text-white">—</p>
+                            <p class="text-xs font-mono mt-1 text-slate-500">Annualised</p>
+                        </div>
+                    </div>
+
+                    <!-- RSI Visual Bar -->
+                    <div class="glass-panel rounded-xl p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-semibold text-white">RSI Indicator</span>
+                            <div class="flex gap-3 text-xs text-slate-500">
+                                <span class="text-neon-red font-mono">Overbought &gt;70</span>
+                                <span class="text-neon-green font-mono">Oversold &lt;30</span>
+                            </div>
+                        </div>
+                        <div class="rsi-bar-track">
+                            <div id="dmRsiThumb" class="rsi-bar-thumb" style="left: 50%"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-600 font-mono mt-1">
+                            <span>0</span><span>30</span><span>50</span><span>70</span><span>100</span>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Price Chart -->
+                    <div class="glass-panel rounded-xl p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-white">Price History + Bollinger Bands</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Close price with upper/lower bands — last 120 sessions</p>
+                            </div>
+                            <div class="flex gap-3 text-xs">
+                                <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-neon-cyan inline-block rounded"></span>Close</span>
+                                <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-neon-red/70 inline-block rounded"></span>BB Upper</span>
+                                <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-neon-green/70 inline-block rounded"></span>BB Lower</span>
+                            </div>
+                        </div>
+                        <div style="height: 260px;">
+                            <canvas id="dmPriceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: AI Predictions + GAN CI side by side -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                        <!-- AI Predictions -->
+                        <div class="glass-panel rounded-xl p-5">
+                            <h3 class="text-sm font-bold text-white mb-1">AI Predictions — Next Day Close</h3>
+                            <p class="text-xs text-slate-500 mb-4">Ensemble of LSTM + XGBoost models</p>
+                            <div class="space-y-3">
+                                <div class="pred-card flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center">
+                                            <i class="ri-brain-line text-neon-purple text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-white">LSTM</p>
+                                            <p class="text-[10px] text-slate-500">Deep sequence model</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p id="dmLstm" class="text-lg font-bold font-mono text-neon-purple">—</p>
+                                        <p id="dmLstmDiff" class="text-[10px] font-mono text-slate-500">—</p>
+                                    </div>
+                                </div>
+                                <div class="pred-card flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-neon-green/10 flex items-center justify-center">
+                                            <i class="ri-bar-chart-2-line text-neon-green text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-white">XGBoost</p>
+                                            <p id="dmXgbGated" class="text-[10px] text-slate-500">Feature-based model</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p id="dmXgb" class="text-lg font-bold font-mono text-neon-green">—</p>
+                                        <p id="dmXgbDiff" class="text-[10px] font-mono text-slate-500">—</p>
+                                    </div>
+                                </div>
+                                <div class="pred-card flex items-center justify-between border-neon-cyan/20 bg-neon-cyan/5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center">
+                                            <i class="ri-rocket-2-line text-neon-cyan text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-white">Ensemble</p>
+                                            <p class="text-[10px] text-slate-500">LSTM×0.63 + XGB×0.37</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p id="dmEnsemble" class="text-xl font-bold font-mono text-neon-cyan">—</p>
+                                        <p id="dmEnsembleDiff" class="text-[10px] font-mono text-slate-500">—</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GAN Confidence Interval -->
+                        <div class="glass-panel rounded-xl p-5">
+                            <h3 class="text-sm font-bold text-white mb-1">GAN Confidence Interval</h3>
+                            <p class="text-xs text-slate-500 mb-4">50 Monte Carlo simulations · 95% CI</p>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-3 gap-3">
+                                    <div class="pred-card text-center">
+                                        <p class="text-[10px] text-slate-500 mb-1">CI Lower</p>
+                                        <p id="dmCiLow" class="text-sm font-bold font-mono text-neon-red">—</p>
+                                    </div>
+                                    <div class="pred-card text-center bg-neon-purple/5 border-neon-purple/20">
+                                        <p class="text-[10px] text-slate-500 mb-1">GAN Mean</p>
+                                        <p id="dmCiMean" class="text-sm font-bold font-mono text-neon-purple">—</p>
+                                    </div>
+                                    <div class="pred-card text-center">
+                                        <p class="text-[10px] text-slate-500 mb-1">CI Upper</p>
+                                        <p id="dmCiHigh" class="text-sm font-bold font-mono text-neon-green">—</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-500 mb-2">Confidence Band</p>
+                                    <div class="ci-bar">
+                                        <div id="dmCiMeanLine" class="ci-mean-line" style="left: 50%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-slate-600 font-mono mt-1">
+                                        <span id="dmCiLowLabel">—</span>
+                                        <span class="text-neon-purple">μ</span>
+                                        <span id="dmCiHighLabel">—</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-500 mb-2">Std Deviation</p>
+                                    <p id="dmCiStd" class="text-base font-bold font-mono text-white">—</p>
+                                </div>
+                                <!-- Mini GAN projection sparkline -->
+                                <div>
+                                    <p class="text-[10px] text-slate-500 mb-2">GAN Projection (next 30 steps)</p>
+                                    <div style="height: 80px;">
+                                        <canvas id="dmGanChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sentiment Row -->
+                    <div class="glass-panel rounded-xl p-5">
+                        <div class="flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-white">NLP Sentiment Analysis</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Live financial news headline scoring (VADER)</p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-center">
+                                    <p class="text-[10px] text-slate-500 mb-1">Score</p>
+                                    <p id="dmSentScore" class="text-xl font-bold font-mono text-white">—</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-[10px] text-slate-500 mb-1">Signal</p>
+                                    <p id="dmSentLabel" class="text-sm font-bold font-mono px-3 py-1 rounded-lg">—</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-[10px] text-slate-500 mb-1">Headlines</p>
+                                    <p id="dmSentCount" class="text-xl font-bold font-mono text-white">—</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Sentiment bar -->
+                        <div class="mt-4">
+                            <div class="h-2 rounded-full bg-gradient-to-r from-neon-red via-slate-600 to-neon-green relative">
+                                <div id="dmSentDot" class="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-2 border-slate-950 shadow-lg" style="left:50%"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-slate-600 font-mono mt-1">
+                                <span>Negative −1</span><span>Neutral 0</span><span>Positive +1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SHAP Explainability -->
+                    <div class="glass-panel rounded-xl p-5">
+                        <h3 class="text-sm font-bold text-white mb-1">XGBoost Feature Importance (SHAP)</h3>
+                        <p class="text-xs text-slate-500 mb-4">Which features are driving the XGBoost prediction</p>
+                        <div id="dmShapBars" class="space-y-2"></div>
+                    </div>
+
+                </div><!-- /dmContent -->
+            </div><!-- /modal body -->
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- JAVASCRIPT                                                    -->
+    <!-- ============================================================ -->
     <script>
         // ==========================================
         // CLOCK
@@ -263,6 +580,9 @@
         // ==========================================
         let currentAuthMode = 'login';
         let isAuthenticated = false;
+        let _metricsData = null;        // cached /api/metrics payload
+        let _priceChartInst = null;
+        let _ganChartInst = null;
 
         // ==========================================
         // AUTH MODAL
@@ -273,7 +593,6 @@
             document.getElementById('authError').classList.add('hidden');
             document.getElementById('authUsername').value = '';
             document.getElementById('authPassword').value = '';
-
             if (mode === 'register') {
                 document.getElementById('authTitle').innerText = 'Create Account';
                 document.getElementById('emailField').classList.remove('hidden');
@@ -290,41 +609,25 @@
                     'Don\'t have an account? <a href="#" onclick="showAuthModal(\'register\')" class="text-neon-cyan hover:underline">Register</a>';
             }
         }
-
-        function closeAuthModal() {
-            document.getElementById('authModal').classList.add('hidden');
-        }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
 
         async function handleAuth(e) {
             e.preventDefault();
             const errorEl = document.getElementById('authError');
             errorEl.classList.add('hidden');
-
             const body = {
                 username: document.getElementById('authUsername').value.trim(),
                 password: document.getElementById('authPassword').value,
             };
-
             let url = '/api/login';
             if (currentAuthMode === 'register') {
                 body.email = document.getElementById('authEmail').value.trim();
                 url = '/api/register';
             }
-
             try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                 const data = await res.json();
-
-                if (!res.ok) {
-                    errorEl.innerText = data.error || 'An error occurred';
-                    errorEl.classList.remove('hidden');
-                    return;
-                }
-
+                if (!res.ok) { errorEl.innerText = data.error || 'An error occurred'; errorEl.classList.remove('hidden'); return; }
                 closeAuthModal();
                 checkSession();
             } catch (err) {
@@ -339,13 +642,12 @@
         }
 
         // ==========================================
-        // SESSION CHECK
+        // SESSION
         // ==========================================
         async function checkSession() {
             try {
                 const res = await fetch('/api/session');
                 const data = await res.json();
-
                 if (data.authenticated) {
                     isAuthenticated = true;
                     document.getElementById('authButtons').classList.add('hidden');
@@ -353,8 +655,6 @@
                     document.getElementById('usernameDisplay').innerText = data.user.username;
                     document.getElementById('loginPrompt').classList.add('hidden');
                     document.getElementById('watchlistSection').classList.remove('hidden');
-
-                    // Update sidebar
                     document.getElementById('sidebarUser').innerHTML = `
                         <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">
                             ${data.user.username[0].toUpperCase()}
@@ -364,15 +664,14 @@
                             <p class="text-xs text-neon-green">Authenticated</p>
                         </div>
                     `;
-
-                    loadWatchlist();
+                    await loadMetrics();     // load OGDC metrics first
+                    await loadWatchlist();
                 } else {
                     isAuthenticated = false;
                     document.getElementById('authButtons').classList.remove('hidden');
                     document.getElementById('userInfo').classList.add('hidden');
                     document.getElementById('loginPrompt').classList.remove('hidden');
                     document.getElementById('watchlistSection').classList.add('hidden');
-
                     document.getElementById('sidebarUser').innerHTML = `
                         <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple flex items-center justify-center font-bold text-xs text-black">?</div>
                         <div class="hidden lg:block">
@@ -381,9 +680,53 @@
                         </div>
                     `;
                 }
-            } catch (err) {
-                console.error('Session check failed:', err);
+            } catch (err) { console.error('Session check failed:', err); }
+        }
+
+        // ==========================================
+        // METRICS — fetch OGDC live data
+        // ==========================================
+        async function loadMetrics() {
+            document.getElementById('metricsLoading').classList.remove('hidden');
+            try {
+                const res = await fetch('/api/metrics');
+                if (!res.ok) throw new Error('metrics failed');
+                _metricsData = await res.json();
+                populateMetricsBar(_metricsData);
+            } catch (e) {
+                console.warn('Metrics load error:', e);
+                _metricsData = null;
+            } finally {
+                document.getElementById('metricsLoading').classList.add('hidden');
             }
+        }
+
+        function populateMetricsBar(m) {
+            const bar = document.getElementById('metricsBar');
+            bar.classList.remove('hidden');
+
+            const price = m.current_price;
+            const closes = m.chart_data?.close || [];
+            const prevClose = closes.length >= 2 ? closes[closes.length - 2] : price;
+            const chg = price - prevClose;
+            const chgPct = ((chg / prevClose) * 100).toFixed(2);
+            const chgSign = chg >= 0 ? '+' : '';
+            const chgColor = chg >= 0 ? 'text-neon-green' : 'text-neon-red';
+
+            document.getElementById('mbPrice').innerText = `PKR ${price.toFixed(2)}`;
+            document.getElementById('mbChange').innerHTML =
+                `<span class="${chgColor}">${chgSign}${chg.toFixed(2)} (${chgSign}${chgPct}%)</span>`;
+            const rsi = m.rsi;
+            const rsiColor = rsi > 70 ? 'text-neon-red' : rsi < 30 ? 'text-neon-green' : 'text-neon-cyan';
+            document.getElementById('mbRsi').innerHTML = `<span class="${rsiColor}">${rsi}</span>`;
+            document.getElementById('mbVol').innerText = `${m.volatility}%`;
+            const sharpe = m.sharpe_ratio;
+            const sharpeColor = sharpe >= 1 ? 'text-neon-green' : sharpe >= 0 ? 'text-neon-cyan' : 'text-neon-red';
+            document.getElementById('mbSharpe').innerHTML = `<span class="${sharpeColor}">${sharpe}</span>`;
+            const sentLabel = m.sentiment_label;
+            const sentColor = sentLabel === 'Positive' ? 'text-neon-green' : sentLabel === 'Negative' ? 'text-neon-red' : 'text-slate-400';
+            document.getElementById('mbSentiment').innerHTML = `<span class="${sentColor}">${sentLabel}</span>`;
+            document.getElementById('metricsTimestamp').innerText = 'Updated ' + new Date().toLocaleTimeString();
         }
 
         // ==========================================
@@ -394,66 +737,184 @@
                 const res = await fetch('/api/watchlist');
                 const data = await res.json();
                 const tickers = data.watchlist || [];
-
                 document.getElementById('watchlistCount').innerText = `(${tickers.length} ticker${tickers.length !== 1 ? 's' : ''})`;
-
                 const grid = document.getElementById('watchlistGrid');
                 const empty = document.getElementById('emptyWatchlist');
-
-                if (tickers.length === 0) {
-                    grid.innerHTML = '';
-                    empty.classList.remove('hidden');
-                    return;
-                }
-
+                if (tickers.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
                 empty.classList.add('hidden');
-                grid.innerHTML = tickers.map(ticker => `
-                    <div class="ticker-card glass-panel rounded-xl p-5 relative group">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-neon-cyan/10 flex items-center justify-center">
-                                    <i class="ri-stock-line text-neon-cyan text-lg"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-white font-bold text-lg font-mono">${ticker}</h4>
-                                    <p class="text-slate-500 text-xs">PSX Listed</p>
-                                </div>
-                            </div>
-                            <button onclick="handleRemoveTicker('${ticker}')" 
-                                class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-neon-red p-1"
-                                title="Remove from watchlist">
-                                <i class="ri-close-circle-line text-xl"></i>
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="px-2 py-1 rounded text-[10px] font-mono bg-neon-green/10 text-neon-green border border-neon-green/20">TRACKED</span>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                console.error('Failed to load watchlist:', err);
-            }
+                grid.innerHTML = tickers.map((ticker, idx) => buildCard(ticker, idx)).join('');
+                // Draw sparklines for OGDC cards
+                tickers.forEach(ticker => {
+                    if (ticker.toUpperCase() === 'OGDC' && _metricsData?.chart_data?.close) {
+                        drawSparkline(`spark_${ticker}`, _metricsData.chart_data.close.slice(-30));
+                    }
+                });
+            } catch (err) { console.error('Failed to load watchlist:', err); }
         }
 
+        function buildCard(ticker, idx) {
+            const isOGDC = ticker.toUpperCase() === 'OGDC';
+            const m = _metricsData;
+
+            if (isOGDC && m) {
+                const price = m.current_price;
+                const closes = m.chart_data?.close || [];
+                const prevClose = closes.length >= 2 ? closes[closes.length - 2] : price;
+                const chg = price - prevClose;
+                const chgPct = ((chg / prevClose) * 100).toFixed(2);
+                const chgSign = chg >= 0 ? '+' : '';
+                const chgColor = chg >= 0 ? '#10b981' : '#f43f5e';
+                const rsi = m.rsi;
+                const rsiColor = rsi > 70 ? '#f43f5e' : rsi < 30 ? '#10b981' : '#06b6d4';
+                const rsiLabel = rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Neutral';
+                const sentLabel = m.sentiment_label;
+                const sentColor = sentLabel === 'Positive' ? '#10b981' : sentLabel === 'Negative' ? '#f43f5e' : '#94a3b8';
+                const predEnsemble = m.predictions?.ensemble?.toFixed(2) || '—';
+
+                return `
+                <div class="ticker-card glass-panel rounded-xl p-5 border border-neon-cyan/15 relative group col-span-1 sm:col-span-2"
+                     onclick="openDetailModal('${ticker}')"
+                     style="animation-delay:${idx * 60}ms">
+                    <!-- Header row -->
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
+                                <i class="ri-stock-line text-neon-cyan text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-white font-bold text-xl font-mono">${ticker}</h4>
+                                <p class="text-slate-500 text-xs">Oil & Gas Development Co.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap justify-end">
+                            <span class="stat-chip bg-neon-green/10 text-neon-green border border-neon-green/20">
+                                <i class="ri-record-circle-fill text-[8px]"></i> LIVE
+                            </span>
+                            <button onclick="event.stopPropagation(); handleRemoveTicker('${ticker}')"
+                                class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-neon-red p-1"
+                                title="Remove from watchlist">
+                                <i class="ri-delete-bin-line text-base"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Price row -->
+                    <div class="flex items-baseline gap-3 mb-3">
+                        <span class="text-2xl font-bold font-mono text-white">PKR ${price.toFixed(2)}</span>
+                        <span class="text-sm font-mono font-bold" style="color:${chgColor}">${chgSign}${chg.toFixed(2)} (${chgSign}${chgPct}%)</span>
+                    </div>
+
+                    <!-- Chips row -->
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <span class="stat-chip bg-slate-800 border border-slate-700 text-slate-300">
+                            RSI <span style="color:${rsiColor}">${rsi}</span> · ${rsiLabel}
+                        </span>
+                        <span class="stat-chip bg-slate-800 border border-slate-700 text-slate-300">
+                            Sentiment <span style="color:${sentColor}">${sentLabel}</span>
+                        </span>
+                        <span class="stat-chip bg-neon-purple/10 border border-neon-purple/20 text-neon-purple">
+                            AI Pred PKR ${predEnsemble}
+                        </span>
+                    </div>
+
+                    <!-- Sparkline -->
+                    <div class="sparkline-container">
+                        <canvas id="spark_${ticker}"></canvas>
+                    </div>
+
+                    <!-- Click hint -->
+                    <div class="mt-3 flex items-center gap-1 text-[10px] text-slate-600 group-hover:text-neon-cyan transition-colors">
+                        <i class="ri-expand-diagonal-line text-xs"></i>
+                        <span>Click to view full analytics</span>
+                    </div>
+                </div>`;
+            }
+
+            // Non-OGDC card (no live data)
+            return `
+            <div class="ticker-card ticker-card-other glass-panel rounded-xl p-5 border border-slate-700/30 relative group"
+                 style="animation-delay:${idx * 60}ms">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
+                            <i class="ri-stock-line text-neon-purple text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-white font-bold text-lg font-mono">${ticker}</h4>
+                            <p class="text-slate-500 text-xs">PSX Listed</p>
+                        </div>
+                    </div>
+                    <button onclick="handleRemoveTicker('${ticker}')"
+                        class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-neon-red p-1"
+                        title="Remove from watchlist">
+                        <i class="ri-delete-bin-line text-base"></i>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="stat-chip bg-slate-800 border border-slate-700/60 text-slate-500">
+                        <i class="ri-wifi-off-line text-[9px]"></i> No Live Data
+                    </span>
+                    <span class="stat-chip bg-neon-purple/10 border border-neon-purple/20 text-neon-purple">TRACKED</span>
+                </div>
+                <p class="text-[10px] text-slate-600 mt-3">Pipeline only supports OGDC in FYP-1</p>
+            </div>`;
+        }
+
+        // ==========================================
+        // SPARKLINE
+        // ==========================================
+        function drawSparkline(canvasId, data) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: data.map((_, i) => i),
+                    datasets: [{
+                        data,
+                        borderColor: '#06b6d4',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        fill: true,
+                        backgroundColor: (ctx) => {
+                            const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 48);
+                            g.addColorStop(0, 'rgba(6,182,212,0.3)');
+                            g.addColorStop(1, 'rgba(6,182,212,0)');
+                            return g;
+                        },
+                        tension: 0.4,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: { duration: 600 },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: { x: { display: false }, y: { display: false } }
+                }
+            });
+        }
+
+        // ==========================================
+        // TOAST
+        // ==========================================
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
-            const msg = document.getElementById('toastMsg');
-            msg.innerText = message;
-            icon.className = isError
-                ? 'ri-error-warning-fill text-neon-red text-lg'
-                : 'ri-checkbox-circle-fill text-neon-green text-lg';
+            document.getElementById('toastMsg').innerText = message;
+            icon.className = isError ? 'ri-error-warning-fill text-neon-red text-lg' : 'ri-checkbox-circle-fill text-neon-green text-lg';
             toast.classList.remove('hidden');
             clearTimeout(toast._timer);
             toast._timer = setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
+        // ==========================================
+        // ADD / REMOVE TICKER
+        // ==========================================
         async function handleAddTicker(e) {
             e.preventDefault();
             const input = document.getElementById('tickerInput');
             const ticker = input.value.trim().toUpperCase();
             if (!ticker) return;
-
             try {
                 const res = await fetch('/api/watchlist', {
                     method: 'POST',
@@ -461,30 +922,282 @@
                     body: JSON.stringify({ ticker_symbol: ticker })
                 });
                 const data = await res.json();
-
-                if (res.ok) {
-                    input.value = '';
-                    await loadWatchlist();
-                    showToast(data.message || `${ticker} added`);
-                } else {
-                    showToast(data.error || 'Failed to add', true);
-                }
-            } catch (err) {
-                showToast('Network error', true);
-            }
+                if (res.ok) { input.value = ''; await loadWatchlist(); showToast(data.message || `${ticker} added`); }
+                else showToast(data.error || 'Failed to add', true);
+            } catch (err) { showToast('Network error', true); }
         }
 
         async function handleRemoveTicker(ticker) {
             try {
                 const res = await fetch(`/api/watchlist/${ticker}`, { method: 'DELETE' });
-                if (res.ok) {
-                    await loadWatchlist();
-                    showToast(`${ticker} removed from watchlist`);
-                }
-            } catch (err) {
-                showToast('Failed to remove ticker', true);
-            }
+                if (res.ok) { await loadWatchlist(); showToast(`${ticker} removed from watchlist`); }
+            } catch (err) { showToast('Failed to remove ticker', true); }
         }
+
+        // ==========================================
+        // DETAIL MODAL (Option B)
+        // ==========================================
+        async function openDetailModal(ticker) {
+            const modal = document.getElementById('detailModal');
+            const loading = document.getElementById('dmLoading');
+            const content = document.getElementById('dmContent');
+            const isOGDC = ticker.toUpperCase() === 'OGDC';
+
+            document.getElementById('dmTickerName').innerText = ticker;
+            loading.classList.remove('hidden');
+            content.classList.add('hidden');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            if (!isOGDC) {
+                loading.innerHTML = `
+                    <i class="ri-information-line text-4xl text-neon-purple"></i>
+                    <p class="text-slate-400 text-sm mt-2">Full analytics only available for <span class="text-neon-cyan font-mono">OGDC</span> in FYP-1.</p>`;
+                return;
+            }
+
+            // Use cached metrics or refetch
+            const m = _metricsData || await fetch('/api/metrics').then(r => r.json());
+
+            // Destroy old charts
+            if (_priceChartInst) { _priceChartInst.destroy(); _priceChartInst = null; }
+            if (_ganChartInst) { _ganChartInst.destroy(); _ganChartInst = null; }
+
+            loading.classList.add('hidden');
+            content.classList.remove('hidden');
+
+            // ---- Quick Stats ----
+            const price = m.current_price;
+            const closes = m.chart_data?.close || [];
+            const prevClose = closes.length >= 2 ? closes[closes.length - 2] : price;
+            const chg = price - prevClose;
+            const chgPct = ((chg / prevClose) * 100).toFixed(2);
+            const chgSign = chg >= 0 ? '+' : '';
+            const chgColor = chg >= 0 ? '#10b981' : '#f43f5e';
+
+            document.getElementById('dmPrice').innerText = `PKR ${price.toFixed(2)}`;
+            document.getElementById('dmPriceChange').innerHTML =
+                `<span style="color:${chgColor}">${chgSign}${chg.toFixed(2)} (${chgSign}${chgPct}%)</span>`;
+
+            const rsi = m.rsi;
+            document.getElementById('dmRsi').innerText = rsi;
+            const rsiLabel = rsi > 70 ? '⚠ Overbought' : rsi < 30 ? '✓ Oversold — potential entry' : '✓ Neutral zone';
+            const rsiLabelColor = rsi > 70 ? '#f43f5e' : rsi < 30 ? '#10b981' : '#06b6d4';
+            document.getElementById('dmRsiLabel').innerHTML = `<span style="color:${rsiLabelColor}">${rsiLabel}</span>`;
+            document.getElementById('dmRsiThumb').style.left = `${rsi}%`;
+
+            const sharpe = m.sharpe_ratio;
+            document.getElementById('dmSharpe').innerHTML =
+                `<span style="color:${sharpe >= 1 ? '#10b981' : sharpe >= 0 ? '#06b6d4' : '#f43f5e'}">${sharpe}</span>`;
+            document.getElementById('dmVol').innerText = `${m.volatility}%`;
+
+            // ---- Predictions ----
+            const preds = m.predictions;
+            const fmt = v => `PKR ${parseFloat(v).toFixed(2)}`;
+            const diff = v => {
+                const d = parseFloat(v) - price;
+                const s = d >= 0 ? '+' : '';
+                return `<span style="color:${d >= 0 ? '#10b981' : '#f43f5e'}">${s}${d.toFixed(2)} (${s}${((d / price) * 100).toFixed(2)}%)</span>`;
+            };
+            document.getElementById('dmLstm').innerText = fmt(preds.lstm);
+            document.getElementById('dmLstmDiff').innerHTML = diff(preds.lstm);
+            document.getElementById('dmXgb').innerText = fmt(preds.xgboost);
+            document.getElementById('dmXgbDiff').innerHTML = diff(preds.xgboost);
+            if (preds.xgb_gated) document.getElementById('dmXgbGated').innerHTML = '<span class="text-neon-red">⚠ Gated — deviated from LSTM</span>';
+            document.getElementById('dmEnsemble').innerText = fmt(preds.ensemble);
+            document.getElementById('dmEnsembleDiff').innerHTML = diff(preds.ensemble);
+
+            // ---- GAN CI ----
+            const ci = m.gan_confidence;
+            document.getElementById('dmCiLow').innerText = `PKR ${ci.ci_lower?.toFixed(2) || '—'}`;
+            document.getElementById('dmCiMean').innerText = `PKR ${ci.mean?.toFixed(2) || '—'}`;
+            document.getElementById('dmCiHigh').innerText = `PKR ${ci.ci_upper?.toFixed(2) || '—'}`;
+            document.getElementById('dmCiStd').innerText = `± PKR ${ci.std?.toFixed(2) || '—'}`;
+            document.getElementById('dmCiLowLabel').innerText = ci.ci_lower?.toFixed(0) || '—';
+            document.getElementById('dmCiHighLabel').innerText = ci.ci_upper?.toFixed(0) || '—';
+            // Position mean line
+            if (ci.ci_lower != null && ci.ci_upper != null && ci.mean != null) {
+                const pct = ((ci.mean - ci.ci_lower) / (ci.ci_upper - ci.ci_lower)) * 100;
+                document.getElementById('dmCiMeanLine').style.left = `${Math.max(2, Math.min(98, pct))}%`;
+            }
+
+            // ---- Sentiment ----
+            const sent = m.sentiment;
+            const sentLabel = m.sentiment_label;
+            const sentColor = sentLabel === 'Positive' ? '#10b981' : sentLabel === 'Negative' ? '#f43f5e' : '#94a3b8';
+            document.getElementById('dmSentScore').innerText = parseFloat(sent).toFixed(3);
+            document.getElementById('dmSentLabel').innerText = sentLabel;
+            document.getElementById('dmSentLabel').style.background = `${sentColor}18`;
+            document.getElementById('dmSentLabel').style.color = sentColor;
+            document.getElementById('dmSentCount').innerText = m.headline_count || '—';
+            // Sentiment dot: map −1..+1 → 0%..100%
+            const sentPct = ((parseFloat(sent) + 1) / 2) * 100;
+            document.getElementById('dmSentDot').style.left = `${Math.max(2, Math.min(98, sentPct))}%`;
+
+            // ---- SHAP ----
+            // Backend returns { feature_names:[...], shap_values:[...] } — NOT a flat dict.
+            // We zip both arrays together into [name, value] pairs for rendering.
+            const shapContainer = document.getElementById('dmShapBars');
+            const shapRaw = m.shap || {};
+            const shapNames  = shapRaw.feature_names  || [];
+            const shapValues = shapRaw.shap_values     || [];
+            const shapEntries = shapNames
+                .map((name, i) => [name, shapValues[i] ?? 0])
+                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+            const maxShap = Math.max(...shapEntries.map(([, v]) => Math.abs(v)), 0.001);
+            if (shapEntries.length > 0) {
+                shapContainer.innerHTML = shapEntries.map(([feat, val]) => {
+                    const pct   = (Math.abs(val) / maxShap) * 100;
+                    const color = val >= 0 ? '#10b981' : '#f43f5e';
+                    return `
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-slate-400 w-24 shrink-0 text-right">${feat}</span>
+                        <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-700" style="width:${pct}%;background:${color}"></div>
+                        </div>
+                        <span class="text-xs font-mono w-16 shrink-0" style="color:${color}">${val >= 0 ? '+' : ''}${val.toFixed(4)}</span>
+                    </div>`;
+                }).join('');
+                // Add base value note
+                if (shapRaw.base_value) {
+                    shapContainer.innerHTML += `<p class="text-[10px] text-slate-600 font-mono mt-3">Base value (expected output): PKR ${parseFloat(shapRaw.base_value).toFixed(2)} · Top driver: <span class="text-neon-cyan">${shapRaw.top_driver || '—'}</span></p>`;
+                }
+            } else {
+                shapContainer.innerHTML = '<p class="text-slate-500 text-xs">No SHAP data available — XGBoost may not be loaded.</p>';
+            }
+
+            // ---- Price Chart + GAN Chart ----
+            // IMPORTANT: wrap in requestAnimationFrame so the browser has completed
+            // a full layout pass and the canvas has real pixel dimensions before
+            // Chart.js reads them. Without this, the canvas is 0×0 and nothing renders.
+            const dates = m.chart_data.dates.slice(-120);
+            const closePrices = m.chart_data.close.slice(-120);
+            const bbUp = m.chart_data.bb_upper.slice(-120);
+            const bbLow = m.chart_data.bb_lower.slice(-120);
+            const ganPath = (m.gan_projection || []).slice(0, 30);
+
+            // setTimeout 400ms: requestAnimationFrame fires before the 350ms CSS slideUp
+            // animation completes, so the canvas still has 0×0 dimensions. 400ms ensures
+            // the modal has fully painted and the container has real pixel size.
+            setTimeout(() => {
+                // Destroy any stale Chart.js instance attached to these canvases
+                // (handles the case where the user reopens the modal)
+                const priceCanvas = document.getElementById('dmPriceChart');
+                const ganCanvas   = document.getElementById('dmGanChart');
+                const existingPrice = Chart.getChart(priceCanvas);
+                const existingGan   = Chart.getChart(ganCanvas);
+                if (existingPrice) existingPrice.destroy();
+                if (existingGan)   existingGan.destroy();
+
+                _priceChartInst = new Chart(priceCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [
+                            {
+                                label: 'Close',
+                                data: closePrices,
+                                borderColor: '#06b6d4',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.3,
+                                order: 1,
+                            },
+                            {
+                                label: 'BB Upper',
+                                data: bbUp,
+                                borderColor: 'rgba(244,63,94,0.6)',
+                                borderWidth: 1,
+                                borderDash: [4, 3],
+                                pointRadius: 0,
+                                fill: '+1',
+                                backgroundColor: 'rgba(244,63,94,0.05)',
+                                tension: 0.3,
+                                order: 2,
+                            },
+                            {
+                                label: 'BB Lower',
+                                data: bbLow,
+                                borderColor: 'rgba(16,185,129,0.6)',
+                                borderWidth: 1,
+                                borderDash: [4, 3],
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.3,
+                                order: 3,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        animation: { duration: 700 },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15,23,42,0.95)',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                titleColor: '#94a3b8',
+                                bodyColor: '#f8fafc',
+                                callbacks: { label: ctx => ` ${ctx.dataset.label}: PKR ${parseFloat(ctx.raw).toFixed(2)}` }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#475569', maxTicksLimit: 8, font: { family: 'JetBrains Mono', size: 10 } },
+                                grid: { color: 'rgba(255,255,255,0.04)' }
+                            },
+                            y: {
+                                ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10 }, callback: v => `${v.toFixed(0)}` },
+                                grid: { color: 'rgba(255,255,255,0.04)' }
+                            }
+                        }
+                    }
+                });
+
+                _ganChartInst = new Chart(ganCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: ganPath.map((_, i) => `T+${i + 1}`),
+                        datasets: [{
+                            data: ganPath,
+                            borderColor: '#8b5cf6',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: true,
+                            backgroundColor: (ctx) => {
+                                const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 80);
+                                g.addColorStop(0, 'rgba(139,92,246,0.3)');
+                                g.addColorStop(1, 'rgba(139,92,246,0)');
+                                return g;
+                            },
+                            tension: 0.4,
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        animation: { duration: 500 },
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                        scales: {
+                            x: { ticks: { color: '#475569', font: { size: 9 } }, grid: { display: false } },
+                            y: { ticks: { color: '#475569', font: { size: 9 }, callback: v => v.toFixed(0) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                        }
+                    }
+                });
+            }, 400); // end setTimeout — wait for modal animation to complete
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDetailModal();
+        });
 
         // ==========================================
         // INIT
@@ -492,5 +1205,4 @@
         checkSession();
     </script>
 </body>
-
 </html>
