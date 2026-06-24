@@ -306,6 +306,7 @@ def get_metrics():
             "sentiment": sentiment_data["score"],
             "sentiment_label": sentiment_data["label"],
             "headline_count": sentiment_data["headline_count"],
+            "headlines": sentiment_data.get("headlines", []),
             "predictions": {
                 "lstm": round(float(lstm_pred), 2),
                 "xgboost": round(float(xgb_pred), 2),

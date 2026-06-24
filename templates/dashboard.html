@@ -332,17 +332,30 @@
                 </div>
 
                 <!-- Sentiment Card -->
-                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                <div onclick="showSentimentModal()" class="glass-panel p-6 rounded-2xl relative overflow-hidden group cursor-pointer hover:border-neon-green/30 transition-all border border-transparent">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <i class="ri-emotion-line text-6xl text-neon-green"></i>
                     </div>
                     <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider">AI Sentiment</h3>
-                    <div class="mt-2">
+                    <div class="mt-2 flex items-baseline gap-2">
                         <span class="text-3xl font-bold text-white font-mono" id="sentiment">-</span>
                     </div>
                     <p class="mt-2 text-xs" id="sentimentLabel">
                         <span class="text-neon-green">Analysing…</span>
                     </p>
+                    <!-- Sentiment Gauge Bar -->
+                    <div class="mt-2 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden relative">
+                        <div class="absolute inset-0 flex">
+                            <div class="w-1/2 bg-gradient-to-r from-neon-red/40 to-transparent"></div>
+                            <div class="w-1/2 bg-gradient-to-l from-neon-green/40 to-transparent"></div>
+                        </div>
+                        <div id="sentimentGaugePin" class="absolute top-0 w-1 h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.8)] transition-all duration-700" style="left: 50%;"></div>
+                    </div>
+                    <div class="flex justify-between mt-1">
+                        <span class="text-[9px] text-neon-red/60 font-mono">Bearish</span>
+                        <span class="text-[9px] text-slate-600 font-mono">Neutral</span>
+                        <span class="text-[9px] text-neon-green/60 font-mono">Bullish</span>
+                    </div>
                     <p class="mt-1 text-[10px] text-slate-500 font-mono" id="headlineCount"></p>
                 </div>
 
@@ -490,10 +503,11 @@
                     if(document.getElementById('price')) document.getElementById('price').innerHTML = `Rs. ${data.current_price}`;
                     if(document.getElementById('rsi')) document.getElementById('rsi').textContent = data.rsi;
 
-                    // Sentiment — NLP
+                    // Sentiment — NLP (formatted as percentage)
                     const sentEl = document.getElementById('sentiment');
                     if(sentEl) {
-                        sentEl.textContent = data.sentiment;
+                        const pct = (data.sentiment * 100).toFixed(1);
+                        sentEl.textContent = `${data.sentiment >= 0 ? '+' : ''}${pct}%`;
                         sentEl.className = `text-3xl font-bold font-mono ${data.sentiment > 0 ? 'text-neon-green' : data.sentiment < 0 ? 'text-neon-red' : 'text-slate-400'}`;
                     }
 
@@ -504,7 +518,18 @@
                         labelEl.innerHTML = `<span class="${labelColors[lbl] || 'text-slate-400'}">${lbl}</span>`;
                     }
 
-                    if(document.getElementById('headlineCount')) document.getElementById('headlineCount').textContent = data.headline_count ? `${data.headline_count} headlines analysed` : '';
+                    // Sentiment gauge pin position (maps -1..+1 to 0%..100%)
+                    const gaugePin = document.getElementById('sentimentGaugePin');
+                    if (gaugePin) {
+                        const pctPos = ((data.sentiment + 1) / 2) * 100;
+                        gaugePin.style.left = `${Math.max(2, Math.min(98, pctPos))}%`;
+                    }
+
+                    if(document.getElementById('headlineCount')) document.getElementById('headlineCount').textContent = data.headline_count ? `${data.headline_count} headlines analysed • click for details` : '';
+
+                    // Cache headlines for modal
+                    window._latestHeadlines = data.headlines || [];
+                    window._latestSentiment = { score: data.sentiment, label: data.sentiment_label, count: data.headline_count };
 
                     // Risk IQ — Sharpe Ratio
                     const sharpeEl = document.getElementById('sharpeRatio');
@@ -863,7 +888,146 @@
             </div>
         </div>
     </div>
-<!-- Auth Modal -->
+
+    <!-- ========== SENTIMENT DETAIL MODAL ========== -->
+    <div id="sentimentModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
+        <div class="glass-panel rounded-2xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col border border-neon-green/20 relative"
+             style="box-shadow: 0 0 60px -15px rgba(16,185,129,0.3);">
+
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-800/50 shrink-0">
+                <button onclick="closeSentimentModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-green/30 to-neon-cyan/20 border border-neon-green/30 flex items-center justify-center">
+                        <i class="ri-newspaper-line text-2xl text-neon-green"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white">AI Sentiment Analysis</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">VADER NLP • Live news headlines • Cached 15 min</p>
+                    </div>
+                </div>
+
+                <!-- Score summary row -->
+                <div class="mt-4 grid grid-cols-3 gap-3">
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">Overall Score</p>
+                        <p class="text-xl font-bold font-mono mt-1" id="smOverallScore">--</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">Signal</p>
+                        <p class="text-xl font-bold font-mono mt-1" id="smSignal">--</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">Headlines</p>
+                        <p class="text-xl font-bold font-mono text-white mt-1" id="smHeadlineCount">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Sources -->
+            <div class="px-6 py-3 border-b border-slate-800/50 shrink-0">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Data Sources</p>
+                <div class="flex flex-wrap gap-2">
+                    <span class="px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-mono"><i class="ri-newspaper-line mr-1"></i>Dawn Business</span>
+                    <span class="px-2 py-1 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-mono"><i class="ri-newspaper-line mr-1"></i>Express Tribune</span>
+                    <span class="px-2 py-1 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-mono"><i class="ri-rss-line mr-1"></i>Google News RSS</span>
+                </div>
+            </div>
+
+            <!-- Headlines list (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6" id="smHeadlinesList">
+                <p class="text-slate-500 text-sm text-center py-8">Loading headlines…</p>
+            </div>
+
+            <!-- Footer info -->
+            <div class="p-4 border-t border-slate-800/50 shrink-0">
+                <p class="text-[10px] text-slate-600 leading-relaxed">
+                    <i class="ri-information-line mr-1"></i>
+                    Sentiment is computed from live web-scraped Pakistani financial news headlines using <strong class="text-slate-500">NLTK VADER</strong>
+                    (Valence Aware Dictionary and sEntiment Reasoner). Each headline receives a compound score from −1.0 to +1.0.
+                    The aggregate is the mean of all individual scores. Currently used as an independent market indicator.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // SENTIMENT DETAIL MODAL
+        // ==========================================
+        function showSentimentModal() {
+            const modal = document.getElementById('sentimentModal');
+            modal.classList.remove('hidden');
+
+            const s = window._latestSentiment || { score: 0, label: 'Neutral', count: 0 };
+            const headlines = window._latestHeadlines || [];
+
+            // Score
+            const pct = (s.score * 100).toFixed(1);
+            const scoreEl = document.getElementById('smOverallScore');
+            scoreEl.textContent = `${s.score >= 0 ? '+' : ''}${pct}%`;
+            scoreEl.className = `text-xl font-bold font-mono mt-1 ${s.score > 0 ? 'text-neon-green' : s.score < 0 ? 'text-neon-red' : 'text-slate-400'}`;
+
+            // Signal
+            const sigEl = document.getElementById('smSignal');
+            const sigColors = { 'Bullish': 'text-neon-green', 'Bearish': 'text-neon-red', 'Neutral': 'text-yellow-400' };
+            sigEl.textContent = s.label;
+            sigEl.className = `text-xl font-bold font-mono mt-1 ${sigColors[s.label] || 'text-slate-400'}`;
+
+            // Count
+            document.getElementById('smHeadlineCount').textContent = s.count || headlines.length;
+
+            // Headlines list
+            const listEl = document.getElementById('smHeadlinesList');
+            if (!headlines.length) {
+                listEl.innerHTML = '<p class="text-slate-500 text-sm text-center py-8">No headlines available \u2014 waiting for next scrape cycle (every 15 min).</p>';
+                return;
+            }
+
+            const sourceColors = {
+                'Dawn Business':       { bg: 'bg-blue-500/10',   border: 'border-blue-500/20',   text: 'text-blue-400' },
+                'Express Tribune Market': { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400' },
+                'Google News RSS':     { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400' },
+            };
+
+            let html = '';
+            headlines.forEach((h, i) => {
+                const sc = h.score || 0;
+                const pctH = (sc * 100).toFixed(0);
+                const chipColor = sc > 0.05 ? 'bg-neon-green/15 text-neon-green border-neon-green/20'
+                               : sc < -0.05 ? 'bg-neon-red/15 text-neon-red border-neon-red/20'
+                               : 'bg-slate-700/40 text-slate-400 border-slate-600/30';
+                const srcStyle = sourceColors[h.source] || { bg: 'bg-slate-700/30', border: 'border-slate-600/20', text: 'text-slate-400' };
+
+                html += `
+                <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-800/40 transition-colors ${i > 0 ? 'mt-2' : ''}">
+                    <div class="shrink-0 mt-0.5">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-[11px] font-bold font-mono ${chipColor}">
+                            ${sc >= 0 ? '+' : ''}${pctH}%
+                        </span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-slate-200 leading-snug">${h.text}</p>
+                        <span class="inline-block mt-1.5 px-1.5 py-0.5 rounded text-[9px] font-mono ${srcStyle.bg} ${srcStyle.border} ${srcStyle.text} border">${h.source}</span>
+                    </div>
+                </div>`;
+            });
+            listEl.innerHTML = html;
+        }
+
+        function closeSentimentModal() {
+            document.getElementById('sentimentModal').classList.add('hidden');
+        }
+
+        // Close on backdrop click
+        document.getElementById('sentimentModal').addEventListener('click', function(e) {
+            if (e.target === this) closeSentimentModal();
+        });
+    </script>
+
+    <!-- Auth Modal -->
     <div id="authModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop">
         <div class="glass-panel rounded-2xl p-8 w-full max-w-md mx-4 border border-slate-700/50 relative">
             <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
