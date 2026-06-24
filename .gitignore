@@ -45,7 +45,7 @@ ENV/
 # ===================================
 # Uncomment below if you want to exclude data files later
 # data/raw/*.csv
-# data/database/*.db
+data/database/*.db
 # data/database/*.sqlite
 # data/database/*.sqlite3
 
