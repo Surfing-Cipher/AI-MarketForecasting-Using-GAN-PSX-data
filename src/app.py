@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request, session, redirect, u
 from data_pipeline import PSXDataPipeline
 from models_engine import GANGenerator, LSTMForecaster, XGBoostForecaster
 from db_manager import (
-    init_db, create_user, verify_user,
+    init_db, clear_live_scraped_data, create_user, verify_user,
     add_to_watchlist, remove_from_watchlist, get_watchlist,
     DB_NAME,
 )
@@ -16,6 +16,7 @@ import os
 import logging
 import secrets
 import time
+import atexit
 from functools import wraps
 
 # --- Load .env file first, before anything else reads os.environ ---
@@ -52,6 +53,8 @@ else:
 
 # --- Initialize Database & Modules ---
 init_db()
+clear_live_scraped_data()  # Clear leftover data on startup
+atexit.register(clear_live_scraped_data)  # Attempt to clear data on shutdown
 pipeline = PSXDataPipeline(ticker="OGDC") 
 gan = GANGenerator()
 lstm = LSTMForecaster()

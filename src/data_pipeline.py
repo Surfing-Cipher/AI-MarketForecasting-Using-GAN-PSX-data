@@ -180,6 +180,13 @@ class PSXDataPipeline:
             }])
             df = pd.concat([df, new_row], ignore_index=True)
 
+        # Temporary Save to Database
+        try:
+            from db_manager import save_temporary_data
+            save_temporary_data(df, self.ticker)
+        except Exception as e:
+            logger.error(f"Failed to save temporary data: {e}")
+
         # 3. Feature Engineering (Technical Indicators)
         # RSI
         df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()

@@ -32,6 +32,19 @@ class MarketData(Base):
     )
 
 
+class LiveScrapedData(Base):
+    __tablename__ = 'live_scraped_data'
+    
+    id = Column(Integer, primary_key=True)
+    ticker = Column(String, nullable=False)
+    date = Column(DateTime, nullable=False)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(Integer)
+
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -166,6 +179,51 @@ def fetch_data(ticker):
     except Exception as e:
         logger.error(f"Failed to fetch data: {e}")
         return pd.DataFrame()
+    finally:
+        session.close()
+
+
+def clear_live_scraped_data():
+    """Clears temporary live scraped data."""
+    session = Session()
+    try:
+        session.query(LiveScrapedData).delete()
+        session.commit()
+        logger.info("Cleared temporary live scraped data from database.")
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to clear live scraped data: {e}")
+    finally:
+        session.close()
+
+
+def save_temporary_data(df, ticker):
+    """Saves downloaded historical and live data into the temporary table."""
+    if df.empty:
+        return
+    session = Session()
+    try:
+        # Clear the table first so we don't flood the database on every refresh
+        session.query(LiveScrapedData).delete()
+        
+        count = 0
+        for _, row in df.iterrows():
+            record = LiveScrapedData(
+                ticker=ticker,
+                date=row['Date'],
+                open=row.get('Open', 0),
+                high=row.get('High', 0),
+                low=row.get('Low', 0),
+                close=row.get('Close', 0),
+                volume=row.get('Volume', 0)
+            )
+            session.add(record)
+            count += 1
+        session.commit()
+        logger.info(f"Refreshed live_scraped_data with the latest {count} records for {ticker}.")
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to save temporary data: {e}")
     finally:
         session.close()
 
