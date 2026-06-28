@@ -276,11 +276,11 @@ def get_metrics():
                 # Both models are in reasonable agreement
                 ensemble = (lstm_pred * 0.63) + (xgb_pred * 0.37)
             else:
-                # XGBoost is miscalibrated — use LSTM only
-                ensemble = lstm_pred
+                # Model disagreement (Fallback) — use 50/50 simple average to cancel extreme biases
+                ensemble = (lstm_pred + xgb_pred) / 2
                 xgb_gated = True
                 logger.warning(
-                    f"XGBoost GATED: deviation={deviation:.1%} "
+                    f"Model Disagreement GATED (Fallback to 50/50 applied): deviation={deviation:.1%} "
                     f"(LSTM={lstm_pred:.2f}, XGB={xgb_pred:.2f})"
                 )
         else:
