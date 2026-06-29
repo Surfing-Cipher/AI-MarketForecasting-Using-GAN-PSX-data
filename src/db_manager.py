@@ -76,6 +76,16 @@ class Watchlist(Base):
     )
 
 
+class GanSyntheticData(Base):
+    """Stores GAN-generated synthetic OGDC Close prices."""
+    __tablename__ = 'gan_synthetic_data'
+
+    id                    = Column(Integer, primary_key=True)
+    day_index             = Column(Integer, nullable=False, unique=True)
+    synthetic_close_price = Column(Float, nullable=False)
+    generated_at          = Column(DateTime, default=datetime.utcnow)
+
+
 # ==========================================
 # DATABASE SETUP
 # ==========================================
@@ -90,7 +100,7 @@ def init_db():
     """Creates all tables in the database."""
     Base.metadata.create_all(engine)
     _migrate_db()  # safe migration for existing DBs
-    logger.info(f"Database '{DB_NAME}' initialized successfully (tables: market_data, users, watchlist).")
+    logger.info(f"Database '{DB_NAME}' initialized successfully (tables: market_data, users, watchlist, gan_synthetic_data).")
 
 
 def _migrate_db():
@@ -335,6 +345,61 @@ def get_watchlist(user_id):
     except Exception as e:
         logger.error(f"Watchlist fetch error: {e}")
         return []
+    finally:
+        session.close()
+
+
+# ==========================================
+# GAN SYNTHETIC DATA FUNCTIONS
+# ==========================================
+
+def save_gan_synthetic_data(prices: list) -> bool:
+    """Saves a list of synthetic Close prices to the gan_synthetic_data table.
+    Clears old data first so re-generation always gives a fresh dataset.
+    Returns True on success, False on failure.
+    """
+    if not prices:
+        logger.warning("save_gan_synthetic_data: empty list received, nothing saved.")
+        return False
+
+    session = Session()
+    try:
+        # Clear old synthetic data before inserting new batch
+        deleted = session.query(GanSyntheticData).delete()
+        logger.info(f"Cleared {deleted} old GAN synthetic rows before re-save.")
+
+        now = datetime.utcnow()
+        records = [
+            GanSyntheticData(
+                day_index=i,
+                synthetic_close_price=round(float(p), 2),
+                generated_at=now
+            )
+            for i, p in enumerate(prices)
+        ]
+        session.bulk_save_objects(records)
+        session.commit()
+        logger.info(f"Saved {len(records)} GAN synthetic rows to gan_synthetic_data table.")
+        return True
+    except Exception as e:
+        session.rollback()
+        logger.error(f"save_gan_synthetic_data error: {e}")
+        return False
+    finally:
+        session.close()
+
+
+def fetch_gan_synthetic_data() -> pd.DataFrame:
+    """Fetches all GAN synthetic data as a Pandas DataFrame."""
+    session = Session()
+    try:
+        query = session.query(GanSyntheticData).order_by(GanSyntheticData.day_index.asc())
+        df = pd.read_sql(query.statement, session.bind)
+        logger.info(f"Fetched {len(df)} rows from gan_synthetic_data.")
+        return df
+    except Exception as e:
+        logger.error(f"fetch_gan_synthetic_data error: {e}")
+        return pd.DataFrame()
     finally:
         session.close()
 

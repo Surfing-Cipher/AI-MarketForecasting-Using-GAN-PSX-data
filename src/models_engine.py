@@ -95,7 +95,7 @@ class GANGenerator:
             logger.error(f"GAN generation failed: {e}")
             return []
 
-    def generate_confidence_interval(self, n_simulations=50):
+    def generate_confidence_interval(self, n_simulations=50, base_price=150.0):
         """Run n_simulations GAN forward passes and compute stats.
         Returns dict with mean, std, ci_lower, ci_upper, and a single representative path.
         """
@@ -105,10 +105,21 @@ class GANGenerator:
             for i in range(n_simulations):
                 noise = np.random.normal(0, 1, (1, self.latent_dim))
                 gen = self.model.predict(noise, verbose=0)
-                path = self.scaler.inverse_transform(gen[0])[:, 3]  # Close col
-                final_prices.append(float(path[-1]))
+                
+                # FIX: Convert GAN raw [0, 1] output into daily returns (-3% to +3%)
+                # This fixes the mode collapse issue where the scaler forced everything to 100
+                raw_path = gen[0][:, 3]
+                returns = (raw_path - 0.5) * 0.06 
+                
+                path = []
+                p = float(base_price)
+                for r in returns:
+                    p = p * (1 + float(r))
+                    path.append(round(p, 2))
+                    
+                final_prices.append(path[-1])
                 if i == 0:
-                    representative_path = path.tolist()
+                    representative_path = path
 
             arr = np.array(final_prices)
             mean_price = float(np.mean(arr))

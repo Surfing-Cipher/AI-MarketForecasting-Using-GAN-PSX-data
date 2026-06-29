@@ -247,9 +247,11 @@ def get_metrics():
         
         # 2. GAN Confidence Interval (Monte Carlo) — Fix #2: 15-min memoization cache
         _now = time.time()
-        if _gan_cache["result"] is None or (_now - _gan_cache["ts"]) > _GAN_CACHE_TTL:
-            logger.info("GAN cache MISS — running 50 Monte Carlo simulations.")
-            _gan_cache["result"] = gan.generate_confidence_interval(n_simulations=50)
+        force_gan = request.args.get('force_gan', 'false').lower() == 'true'
+        
+        if _gan_cache["result"] is None or (_now - _gan_cache["ts"]) > _GAN_CACHE_TTL or force_gan:
+            logger.info(f"GAN cache {'BYPASSED (force)' if force_gan else 'MISS'} — running 50 Monte Carlo simulations.")
+            _gan_cache["result"] = gan.generate_confidence_interval(n_simulations=50, base_price=current_price)
             _gan_cache["ts"] = _now
         else:
             logger.debug("GAN cache HIT — serving memoized confidence interval.")

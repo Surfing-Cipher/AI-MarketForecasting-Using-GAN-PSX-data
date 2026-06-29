@@ -170,7 +170,7 @@
                         <i class="ri-bubble-chart-line text-neon-purple"></i>
                         30-Day Synthetic Projection
                     </h3>
-                    <button onclick="fetchGanData()"
+                    <button onclick="fetchGanData(true)"
                         class="text-xs flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-white transition">
                         <i class="ri-refresh-line"></i> Regenerate Scenario
                     </button>
@@ -180,38 +180,53 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Mean Price -->
                 <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-4 opacity-10">
-                        <i class="ri-arrow-right-down-line text-6xl text-neon-red"></i>
+                        <i class="ri-focus-3-line text-6xl text-neon-cyan"></i>
                     </div>
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Synthetic Low</h3>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Expected Mean Price</h3>
                     <div class="mt-2">
-                        <span class="text-3xl font-bold text-white font-mono" id="synLow">Loading...</span>
+                        <span class="text-3xl font-bold text-white font-mono" id="simMean">Loading...</span>
                     </div>
-                    <p class="text-xs text-neon-red mt-2">Worst Case Scenario</p>
+                    <p class="text-xs text-neon-cyan mt-2">Avg of 50 Simulations</p>
                 </div>
 
+                <!-- Confidence Interval -->
                 <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-4 opacity-10">
-                        <i class="ri-arrow-right-up-line text-6xl text-neon-green"></i>
+                        <i class="ri-expand-left-right-line text-6xl text-neon-green"></i>
                     </div>
-                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Synthetic High</h3>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Confidence Interval</h3>
                     <div class="mt-2">
-                        <span class="text-3xl font-bold text-white font-mono" id="synHigh">Loading...</span>
+                        <span class="text-2xl font-bold text-white font-mono" id="simCI">Loading...</span>
                     </div>
-                    <p class="text-xs text-neon-green mt-2">Best Case Scenario</p>
+                    <p class="text-xs text-neon-green mt-2">95% Probability Range</p>
                 </div>
 
-                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden border-neon-purple/30">
+                <!-- Path Range -->
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-4 opacity-10">
-                        <i class="ri-pulse-fill text-6xl text-neon-purple"></i>
+                        <i class="ri-line-chart-line text-6xl text-neon-purple"></i>
+                    </div>
+                    <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Plotted Path Range</h3>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold text-white font-mono" id="pathRange">Loading...</span>
+                    </div>
+                    <p class="text-xs text-neon-purple mt-2">Chart Scenario Limits</p>
+                </div>
+
+                <!-- Dynamic Volatility -->
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden" id="volatilityCard">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <i class="ri-pulse-fill text-6xl text-white"></i>
                     </div>
                     <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Projected Volatility</h3>
                     <div class="mt-2">
-                        <span class="text-3xl font-bold text-white font-mono">HIGH</span>
+                        <span class="text-3xl font-bold text-white font-mono" id="dynVolatility">Loading...</span>
                     </div>
-                    <p class="text-xs text-neon-purple mt-2">Data Scarcity Solved</p>
+                    <p class="text-xs text-white mt-2" id="volatilitySubtext">Standard Deviation</p>
                 </div>
             </div>
 
@@ -226,10 +241,11 @@
 
         let ganChartInstance = null;
 
-        async function fetchGanData() {
+        async function fetchGanData(force = false) {
             try {
-                // Fetch data from the same API (app.py calculates GAN on every request)
-                const response = await fetch('/api/metrics');
+                // Fetch data, force bypass cache if button clicked
+                const url = force ? '/api/metrics?force_gan=true' : '/api/metrics';
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.error) {
@@ -237,15 +253,37 @@
                     return;
                 }
 
-                // 1. Get the GAN Data from JSON
+                // 1. Get the GAN Chart Path
                 const ganPath = data.gan_projection;
-
-                // 2. Calculate Stats
                 const minPrice = Math.min(...ganPath);
                 const maxPrice = Math.max(...ganPath);
 
-                document.getElementById('synLow').innerText = `Rs. ${minPrice.toFixed(2)}`;
-                document.getElementById('synHigh').innerText = `Rs. ${maxPrice.toFixed(2)}`;
+                // 2. Get Confidence Interval Metrics (from 50 simulations!)
+                const ganConf = data.gan_confidence;
+
+                // 3. Update DOM
+                document.getElementById('simMean').innerText = `Rs. ${ganConf.mean.toFixed(2)}`;
+                document.getElementById('simCI').innerText = `[${ganConf.ci_lower.toFixed(0)}, ${ganConf.ci_upper.toFixed(0)}]`;
+                document.getElementById('pathRange').innerText = `Rs. ${minPrice.toFixed(0)} - ${maxPrice.toFixed(0)}`;
+
+                // Dynamic Volatility Logic
+                const stdDev = ganConf.std;
+                let volText = "LOW";
+                let colorClass = "text-neon-cyan";
+                
+                if (stdDev > 12) {
+                    volText = "HIGH";
+                    colorClass = "text-neon-red";
+                } else if (stdDev > 6) {
+                    volText = "MEDIUM";
+                    colorClass = "text-neon-purple";
+                }
+                
+                const volEl = document.getElementById('dynVolatility');
+                volEl.innerText = volText;
+                volEl.className = `text-3xl font-bold font-mono ${colorClass}`;
+                document.getElementById('volatilitySubtext').innerText = `Std Dev: ±${stdDev.toFixed(2)}`;
+                document.getElementById('volatilitySubtext').className = `text-xs mt-2 ${colorClass}`;
 
                 // 3. Render Chart
                 updateGanChart(ganPath);
